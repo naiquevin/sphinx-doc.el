@@ -1,5 +1,5 @@
-;;; sphinx-doc.el -- Minor Mode for generating Sphinx friendly
-;;; function docstrings for Python (at the moment)
+;;; sphinx-doc.el -- Emacs functionality for generating Sphinx
+;;; friendly function docstrings for Python (Not a minor mode yet)
 
 ;; Author: Vineet Naik <naikvin@gmail.com>
 ;; Created: 14th October 2013
@@ -8,9 +8,9 @@
 
 ;;; Commentary:
 
-;; This is a minor mode that can be used to generate skeleton of
-;; docstrings for Python functions. The structure of the docstring is
-;; according to Sphinx documentation generator
+;; This file just provides a function `sphinx-doc` that can be used to
+;; generate skeleton of docstrings for Python functions. The structure
+;; of the docstring is according to Sphinx documentation generator
 ;; <http://sphinx-doc.org/index.html>
 
 ;;; Installation:
