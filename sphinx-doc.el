@@ -1,5 +1,5 @@
-;;; sphinx-doc.el -- Emacs functionality for generating Sphinx
-;;; friendly function docstrings for Python (Not a minor mode yet)
+;;; sphinx-doc.el -- Generate Sphinx friendly docstrings for Python
+;;; functions.
 
 ;; Author: Vineet Naik <naikvin@gmail.com>
 ;; Created: 14th October 2013

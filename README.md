@@ -1,4 +1,4 @@
-Sphinx-doc.el
+sphinx-doc.el
 =============
 
-Work in progress
+Work in progress.
