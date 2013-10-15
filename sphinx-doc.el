@@ -62,7 +62,7 @@
 
 
 (defun sphinx-doc-with-region (srch-beg srch-end f)
-  (save-excursion 
+  (save-excursion
     (previous-line)
     (search-backward srch-beg)
     (next-line)
@@ -95,9 +95,9 @@
       (if fndef
           (progn
             (move-end-of-line nil)
-            (newline-and-indent)            
+            (newline-and-indent)
             (insert (sphinx-doc-fun-comment fndef))
-            (sphinx-doc-with-comment 
+            (sphinx-doc-with-comment
              (lambda (b e)
                (indent-rigidly b e (+ curr-indent python-indent))))
             (sphinx-doc-with-fields
