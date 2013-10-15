@@ -2,6 +2,8 @@
 ;; Python (at the moment)
 
 
+;; Some good-to-have helper functions
+
 (defun current-line-string ()
   "Return current line as string"
   (buffer-substring (point-at-bol) (point-at-eol)))
@@ -13,15 +15,18 @@
 
 
 (defun join-str (strs sep)
+  "Joins list of strings `strs` together by the separator `sep`"
   (mapconcat 'identity strs sep))
 
 
+;; regular expression to identify a valid function definition in
+;; python and match it's name and arguments
 (defconst sphinx-doc-fun-regex "^\s*def \\([a-zA-Z0-9_]+\\)(\\(.*\\)):$")
 
 
 (defun sphinx-doc-fun-args (argstr)
   "Returns arguments from the Python function definition as a
-  list. Note that args of type `self`, `*args` and `**kwargs`
+  string. Note that args of type `self`, `*args` and `**kwargs`
   will be ignored"
   (if (string= argstr "")
       '()
@@ -36,12 +41,15 @@
 
 
 (defun sphinx-doc-fun-def (string)
+  "Returns a pair of name of the function and list of the name of
+  the arguments"
   (when (string-match sphinx-doc-fun-regex string)
     (list (match-string 1 string)
           (sphinx-doc-fun-args (match-string 2 string)))))
 
 
 (defun sphinx-doc-fun-fields (args)
+  "Returns field info as per sphinx doc as string"
   (let ((param-name (lambda (p)
                       (car (split-string p "=")))))
     (join-str (append
@@ -53,6 +61,8 @@
 
 
 (defun sphinx-doc-fun-comment (def)
+  "Returns docstring skeleton as string from function
+  definition (pair of name and args)"
   (join-str (list "\"\"\"FIXME! briefly describe function"
                   ""
                   (sphinx-doc-fun-fields (cadr def))
@@ -62,6 +72,10 @@
 
 
 (defun sphinx-doc-with-region (srch-beg srch-end f)
+  "Selects a region by searching for the beginning expression
+  `srch-beg` and the end expression `srch-end` and executes the
+  function `f` on the region. Finally returns the cursor to the
+  initial position"
   (save-excursion
     (previous-line)
     (search-backward srch-beg)
@@ -73,14 +87,19 @@
 
 
 (defun sphinx-doc-with-comment (f)
+  "Selects the comment and runs the function `f` on region"
   (sphinx-doc-with-region "\"\"\"" "\"\"\"" f))
 
 
 (defun sphinx-doc-with-fields (f)
+  "Selects the field info section of the comment and executes the
+  function `f` on the region"
   (sphinx-doc-with-region "FIXME!" ":rtype: " f))
 
 
 (defun sphinx-doc-current-indent ()
+  "Returns the indentation level of the current line, ie. by how
+  many number of spaces the current line is indented"
   (save-excursion
     (let ((bti (progn (back-to-indentation) (point)))
           (bol (progn (beginning-of-line) (point))))
@@ -88,6 +107,8 @@
 
 
 (defun sphinx-doc ()
+  "Interactive command to insert docstring skeleton for the
+  function definition at point"
   (interactive)
   (when (string= major-mode "python-mode")
     (let ((fndef (sphinx-doc-fun-def (current-line-string)))
