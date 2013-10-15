@@ -1,8 +1,38 @@
-;; Minor Mode for generating Sphinx friendly function docstrings for
-;; Python (at the moment)
+;;; sphinx-doc.el -- Minor Mode for generating Sphinx friendly
+;;; function docstrings for Python (at the moment)
+
+;; Author: Vineet Naik <naikvin@gmail.com>
+;; Created: 14th October 2013
+
+;; License: MIT <http://opensource.org/licenses/MIT>
+
+;;; Commentary:
+
+;; This is a minor mode that can be used to generate skeleton of
+;; docstrings for Python functions. The structure of the docstring is
+;; according to Sphinx documentation generator
+;; <http://sphinx-doc.org/index.html>
+
+;;; Installation:
+
+;; Copy this file somewhere in your path and add the following lines
+;; to your .emacs (or the equivalent config file)
+;;
+;; (require 'sphinx-doc)
+;;
+;; (add-hook 'python-mode-hook (lambda () (local-set-key (kbd "C-c M-d") #'sphinx-doc)))
+;;
+;; This will bind the function `sphinx-doc` to `C-c M-d`. Choose this
+;; as per your liking.
+
+;;; Usage:
+
+;; In a Python file, move the cursor the function definition and type
+;; `C-c M-d` (or the key binding you have chosen). Alternatively,
+;; execute the function using `M-x sphinx-doc RET`
 
 
-;; Some good-to-have helper functions
+;; some good-to-have helper functions
 
 (defun current-line-string ()
   "Return current line as string"
@@ -129,3 +159,4 @@
 
 (provide 'sphinx-doc)
 
+;; sphinx-doc.el ends
