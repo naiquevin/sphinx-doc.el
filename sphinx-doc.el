@@ -105,3 +105,6 @@
                (align-regexp b e "\\(\\s-*\\): ")))
             (search-backward "FIXME!"))))))
 
+
+(provide 'sphinx-doc)
+
