@@ -41,14 +41,6 @@
           (sphinx-doc-fun-args (match-string 2 string)))))
 
 
-(defun sphinx-doc-fun-sign (def)
-  (let ((name (car def))
-        (args (cadr def))
-        (args-sign (lambda (args)
-                     (join-str args ", "))))
-    (concat ".. function:: " name "(" (funcall args-sign args) ")")))
-
-
 (defun sphinx-doc-fun-fields (args)
   (let ((param-name (lambda (p)
                       (car (split-string p "=")))))
@@ -61,10 +53,7 @@
 
 
 (defun sphinx-doc-fun-comment (def)
-  (join-str (list "\"\"\""
-                  (sphinx-doc-fun-sign def)
-                  ""
-                  "<TODO: describe function here>"
+  (join-str (list "\"\"\"FIXME! briefly describe function"
                   ""
                   (sphinx-doc-fun-fields (cadr def))
                   ""
@@ -88,7 +77,7 @@
 
 
 (defun sphinx-doc-with-fields (f)
-  (sphinx-doc-with-region "<TODO:" ":rtype: " f))
+  (sphinx-doc-with-region "FIXME!" ":rtype: " f))
 
 
 (defun sphinx-doc-current-indent ()
@@ -114,5 +103,5 @@
             (sphinx-doc-with-fields
              (lambda (b e)
                (align-regexp b e "\\(\\s-*\\): ")))
-            (search-backward "<TODO:"))))))
+            (search-backward "FIXME!"))))))
 
