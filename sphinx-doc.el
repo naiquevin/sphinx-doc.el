@@ -86,7 +86,8 @@
                (mapcar (lambda (arg)
                          (concat ":param " (funcall param-name arg) ": "))
                        args)
-               (list (concat ":rtype: ")))
+               (list ":returns: "
+                     ":rtype: "))
               "\n")))
 
 

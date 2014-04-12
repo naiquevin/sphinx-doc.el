@@ -22,8 +22,8 @@
 
 (ert-deftest sphinx-doc-test-fun-fields ()
   (assert (equal (sphinx-doc-fun-fields '("greeting" "name=\"world\""))
-                 ":param greeting: \n:param name: \n:rtype: "))
+                 ":param greeting: \n:param name: \n:returns: \n:rtype: "))
   (assert (equal (sphinx-doc-fun-fields '())
-                 ":rtype: ")))
+                 ":returns: \n:rtype: ")))
 
 
