@@ -151,9 +151,6 @@
             (sphinx-doc-with-comment
              (lambda (b e)
                (indent-rigidly b e (+ curr-indent python-indent))))
-            (sphinx-doc-with-fields
-             (lambda (b e)
-               (align-regexp b e "\\(\\s-*\\): ")))
             (search-backward "FIXME!"))))))
 
 
