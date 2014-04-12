@@ -31,6 +31,13 @@
 ;; `C-c M-d` (or the key binding you have chosen). Alternatively,
 ;; execute the function using `M-x sphinx-doc RET`
 
+;; include libs
+
+(require 'cl)
+
+;; 3rd party deps
+(require 's)
+
 
 ;; some good-to-have helper functions
 
@@ -54,52 +61,108 @@
 (defconst sphinx-doc-fun-regex "^\s*def \\([a-zA-Z0-9_]+\\)(\\(.*\\)):$")
 
 
-(defun sphinx-doc-fun-args (argstr)
-  "Returns arguments from the Python function definition as a
-  string. Note that args of type `self`, `*args` and `**kwargs`
-  will be ignored"
-  (if (string= argstr "")
-      '()
-    (filter (lambda (str)
-              (and (not (string= (substring str 0 1) "*"))
-                   (not (string= str "self"))))
-            (mapcar (lambda (str)
-                      (replace-regexp-in-string
-                       "\\`[ \t\n]*" ""
-                       str))
-                    (split-string  argstr ",")))))
+;; struct definitions
+
+(cl-defstruct arg
+  name      ; name of the arg
+  default)  ; optional default value if specified
 
 
-(defun sphinx-doc-fun-def (string)
-  "Returns a pair of name of the function and list of the name of
-  the arguments"
-  (when (string-match sphinx-doc-fun-regex string)
-    (list (match-string 1 string)
-          (sphinx-doc-fun-args (match-string 2 string)))))
+(cl-defstruct fndef
+  name  ; name of the function
+  args) ; list of arg objects
 
 
-(defun sphinx-doc-fun-fields (args)
-  "Returns field info as per sphinx doc as string"
-  (let ((param-name (lambda (p)
-                      (car (split-string p "=")))))
-    (join-str (append
-               (mapcar (lambda (arg)
-                         (concat ":param " (funcall param-name arg) ": "))
-                       args)
-               (list ":returns: "
-                     ":rtype: "))
-              "\n")))
+(cl-defstruct field
+  key        ; one of the allowed field name keyword
+  type       ; optional datatype
+  arg        ; optional argument
+  (desc "")) ; description
 
 
-(defun sphinx-doc-fun-comment (def)
-  "Returns docstring skeleton as string from function
-  definition (pair of name and args)"
-  (join-str (list "\"\"\"FIXME! briefly describe function"
-                  ""
-                  (sphinx-doc-fun-fields (cadr def))
-                  ""
-                  "\"\"\"")
-            "\n"))
+(cl-defstruct doc
+  (summary "FIXME! briefly describe function") ; summary line that fits on the first line
+  (desc "")                                    ; more elaborate description
+  fields                                       ; list of field objects
+  fndef)                                       ; the current defn object
+
+
+(defun sphinx-doc-str->arg (s)
+  "Builds an arg object from string"
+  (let ((parts (mapcar #'s-trim (split-string s "="))))
+    (if (cdr parts)
+        (make-arg :name (car parts)
+                  :default (cadr parts))
+      (make-arg :name (car parts)))))
+
+
+(defun sphinx-doc-arg->field (a)
+  "Converts an arg object to a field object"
+  (make-field :key "param"
+              :arg (arg-name a)))
+
+
+(defun sphinx-doc-fndef->doc (f)
+  (make-doc :fields (append
+                     (mapcar #'sphinx-doc-arg->field (fndef-args f))
+                     (list (make-field :key "returns")
+                           (make-field :key "rtype")))
+            :fndef f))
+
+
+(defun sphinx-doc-fun-args (argstrs)
+  "Returns arguments (list of arg struct objects) from the Python
+  function definition as a string. Note that args of type `self`,
+  `*args` and `**kwargs` will be ignored"
+  (when (not (string= argstrs ""))
+    (mapcar #'sphinx-doc-str->arg
+            (filter (lambda (str)
+                      (and (not (string= (substring str 0 1) "*"))
+                           (not (string= str "self"))))
+                    (mapcar #'s-trim
+                            (split-string argstrs ","))))))
+
+
+(defun sphinx-doc-fun-def (s)
+  "Returns a fndef object from the python function definition
+  represented by the input string"
+  (when (string-match sphinx-doc-fun-regex s)
+    (make-fndef :name (match-string 1 s)
+                :args (sphinx-doc-fun-args (match-string 2 s)))))
+
+
+(defun sphinx-doc-field->str (f)
+  "Convert a field object to it's string representation"
+  (cond ((and (stringp (field-arg f)) (stringp (field-type f)))
+         (s-format ":${key} ${type} ${arg}: ${desc}"
+                   'aget
+                   `(("key" . ,(field-key f))
+                     ("type" . ,(field-type f))
+                     ("arg" . ,(field-arg f))
+                     ("desc" . ,(field-desc f)))))
+        ((stringp (field-arg f))
+         (s-format ":${key} ${arg}: ${desc}"
+                   'aget
+                   `(("key" . ,(field-key f))
+                     ("arg" . ,(field-arg f))
+                     ("desc" . ,(field-desc f)))))
+        (t (s-format ":${key}: ${desc}"
+                     'aget
+                     `(("key" . ,(field-key f))
+                       ("desc" . ,(field-desc f)))))))
+
+
+(defun sphinx-doc->str (ds)
+  "Converts a doc object into it's string representation"
+  (join-str
+   (list (s-format "\"\"\"$0" 'elt (list (doc-summary ds)))
+         ""
+         (join-str (mapcar #'sphinx-doc-field->str
+                           (doc-fields ds))
+                   "\n")
+         ""
+         "\"\"\"")
+   "\n"))
 
 
 (defun sphinx-doc-with-region (srch-beg srch-end f)
@@ -142,17 +205,18 @@
   function definition at point"
   (interactive)
   (when (string= major-mode "python-mode")
-    (let ((fndef (sphinx-doc-fun-def (current-line-string)))
-          (curr-indent (sphinx-doc-current-indent)))
-      (if fndef
-          (progn
-            (move-end-of-line nil)
-            (newline-and-indent)
-            (insert (sphinx-doc-fun-comment fndef))
-            (sphinx-doc-with-comment
-             (lambda (b e)
-               (indent-rigidly b e (+ curr-indent python-indent))))
-            (search-backward "FIXME!"))))))
+    (let ((fd (sphinx-doc-fun-def (current-line-string))))
+      (if fd
+          (let ((curr-indent (sphinx-doc-current-indent))
+                (new-ds (sphinx-doc-fndef->doc fd)))
+            (progn
+              (move-end-of-line nil)
+              (newline-and-indent)
+              (insert (sphinx-doc->str new-ds))
+              (sphinx-doc-with-comment
+               (lambda (b e)
+                 (indent-rigidly b e (+ curr-indent python-indent))))
+              (search-backward "FIXME!")))))))
 
 
 (provide 'sphinx-doc)

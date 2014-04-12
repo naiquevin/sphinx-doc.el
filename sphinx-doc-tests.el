@@ -5,25 +5,32 @@
 
 (ert-deftest sphinx-doc-test-fun-args ()
   (assert (equal (sphinx-doc-fun-args "") '()))
-  (assert (equal (sphinx-doc-fun-args "name") '("name")))
-  (assert (equal (sphinx-doc-fun-args "name, email") '("name" "email")))
-  (assert (equal (sphinx-doc-fun-args "name,email") '("name" "email")))
-  (assert (equal (sphinx-doc-fun-args "name, email=None") '("name" "email=None")))
-  (assert (equal (sphinx-doc-fun-args "self, name") '("name")))
-  (assert (equal (sphinx-doc-fun-args "name, *args, **kwargs") '("name"))))
+  (assert (equal (sphinx-doc-fun-args "name")
+                 (list (make-arg :name "name"))))
+  (assert (equal (sphinx-doc-fun-args "name, email")
+                 (list (make-arg :name "name") (make-arg :name "email"))))
+  (assert (equal (sphinx-doc-fun-args "name,email")
+                 (list (make-arg :name "name") (make-arg :name "email"))))
+  (assert (equal (sphinx-doc-fun-args "name, email=None")
+                 (list (make-arg :name "name") (make-arg :name "email" :default "None"))))
+  (assert (equal (sphinx-doc-fun-args "name, email = None")
+                 (list (make-arg :name "name") (make-arg :name "email" :default "None"))))
+  (assert (equal (sphinx-doc-fun-args "name, city='Mumbai', editor=\"emacs\"")
+                 (list (make-arg :name "name")
+                       (make-arg :name "city" :default "'Mumbai'")
+                       (make-arg :name "editor" :default "\"emacs\""))))
+  (assert (equal (sphinx-doc-fun-args "self, name")
+                 (list (make-arg :name "name"))))
+  (assert (equal (sphinx-doc-fun-args "name, *args, **kwargs")
+                 (list (make-arg :name "name")))))
 
 
-(ert-deftest sphinx-doc-test-fun-def ()
-  (assert (equal (sphinx-doc-fun-def "def greet(greeting, name='world'):")
-                 '("greet" ("greeting" "name='world'"))))
-  (assert (equal (sphinx-doc-fun-def "def greet(greeting, name=\"world\"):")
-                 '("greet" ("greeting" "name=\"world\"")))))
-
-
-(ert-deftest sphinx-doc-test-fun-fields ()
-  (assert (equal (sphinx-doc-fun-fields '("greeting" "name=\"world\""))
-                 ":param greeting: \n:param name: \n:returns: \n:rtype: "))
-  (assert (equal (sphinx-doc-fun-fields '())
-                 ":returns: \n:rtype: ")))
-
-
+(ert-deftest sphinx-doc-test-field->str ()
+  (assert (string= (sphinx-doc-field->str (make-field :key "param" :arg "greeting"))
+                   ":param greeting: "))
+  (assert (string= (sphinx-doc-field->str (make-field :key "param"
+                                                      :type "str"
+                                                      :arg "greeting"))
+                   ":param str greeting: "))
+  (assert (string= (sphinx-doc-field->str (make-field :key "rtype"))
+                   ":rtype: ")))
