@@ -43,7 +43,7 @@
 
 (defun current-line-string ()
   "Return current line as string"
-  (buffer-substring (point-at-bol) (point-at-eol)))
+  (buffer-substring-no-properties (point-at-bol) (point-at-eol)))
 
 
 (defun filter (condp lst)
@@ -54,6 +54,28 @@
 (defun join-str (strs sep)
   "Joins list of strings `strs` together by the separator `sep`"
   (mapconcat 'identity strs sep))
+
+
+(defun take-while (f seq)
+  (if (funcall f (car seq))
+      '()
+    (cons (car seq) (take-while f (cdr seq)))))
+
+
+(defun drop-while (f seq)
+  (if (funcall f (car seq))
+      seq
+    (drop-while f (cdr seq))))
+
+
+(defun interpose (sep seq)
+  (cl-labels ((aux (xs)
+                 (if (equal xs nil)
+                     (cons sep nil)
+                   (cons sep
+                         (cons (car xs)
+                               (aux (cdr xs)))))))
+    (butlast (cdr (aux seq)) 1)))
 
 
 ;; regular expression to identify a valid function definition in
@@ -82,9 +104,12 @@
 
 (cl-defstruct doc
   (summary "FIXME! briefly describe function") ; summary line that fits on the first line
-  (desc "")                                    ; more elaborate description
-  fields                                       ; list of field objects
-  fndef)                                       ; the current defn object
+  before-fields                                ; list of comments before fields
+  after-fields                                 ; list of comments after fields
+  fields)                                      ; list of field objects
+
+
+; (gv-define-simple-setter doc )
 
 
 (defun sphinx-doc-str->arg (s)
@@ -106,8 +131,7 @@
   (make-doc :fields (append
                      (mapcar #'sphinx-doc-arg->field (fndef-args f))
                      (list (make-field :key "returns")
-                           (make-field :key "rtype")))
-            :fndef f))
+                           (make-field :key "rtype")))))
 
 
 (defun sphinx-doc-fun-args (argstrs)
@@ -155,13 +179,16 @@
 (defun sphinx-doc->str (ds)
   "Converts a doc object into it's string representation"
   (join-str
-   (list (s-format "\"\"\"$0" 'elt (list (doc-summary ds)))
-         ""
-         (join-str (mapcar #'sphinx-doc-field->str
-                           (doc-fields ds))
-                   "\n")
-         ""
-         "\"\"\"")
+   (filter
+    (lambda (x) (not (equal x nil)))
+    (list (s-format "\"\"\"$0\n" 'elt (list (doc-summary ds)))
+          (when (not (string= (doc-before-fields ds) ""))
+            (concat (doc-before-fields ds) "\n"))
+          (join-str (mapcar #'sphinx-doc-field->str (doc-fields ds)) "\n")
+          ""
+          (when (not (string= (doc-after-fields ds) ""))
+            (concat (doc-after-fields ds) "\n"))
+          "\"\"\""))
    "\n"))
 
 
@@ -180,15 +207,19 @@
       (funcall f beg (point-at-eol)))))
 
 
+(defun sphinx-get-region (srch-beg srch-end direction)
+  (save-excursion
+    (if (string= direction "forward")
+        (search-forward srch-beg)
+      (search-backward srch-beg))
+    (let ((beg (point)))
+      (search-forward srch-end)
+      (vector beg (point)))))
+
+
 (defun sphinx-doc-with-comment (f)
   "Selects the comment and runs the function `f` on region"
   (sphinx-doc-with-region "\"\"\"" "\"\"\"" f))
-
-
-(defun sphinx-doc-with-fields (f)
-  "Selects the field info section of the comment and executes the
-  function `f` on the region"
-  (sphinx-doc-with-region "FIXME!" ":rtype: " f))
 
 
 (defun sphinx-doc-current-indent ()
@@ -200,6 +231,102 @@
       (- bti bol))))
 
 
+(defun sphinx-doc-exists? ()
+  (save-excursion
+    (next-line)
+    (s-starts-with? "\"\"\"" (s-trim (current-line-string)))))
+
+
+(defun sphinx-doc-existing ()
+  (when (sphinx-doc-exists?)
+    (let* ((ps (sphinx-get-region "\"\"\"" "\"\"\"" "forward"))
+           (docstr (buffer-substring-no-properties (aref ps 0)
+                                                   (- (aref ps 1) 3))))
+      (sphinx-doc-parse docstr))))
+
+
+(defun sphinx-doc-parse (docstr)
+  (let* ((indent (save-excursion
+                   (next-line)
+                   (sphinx-doc-current-indent)))
+         (lines (mapcar (lambda (line)
+                          (s-chop-prefix (make-string indent 32) line))
+                        (split-string docstr "\n")))
+         (paras (sphinx-doc-lines->paras lines))
+         (field-para? #'(lambda (p) (s-starts-with? ":" (car p)))))
+    (make-doc :summary (caar paras)
+              :before-fields (sphinx-doc-paras->str
+                              (take-while field-para? (cdr paras)))
+              :after-fields (sphinx-doc-paras->str
+                             (cdr (drop-while field-para? (cdr paras))))
+              :fields (sphinx-doc-parse-fields (car (filter field-para? paras))))))
+
+
+(defun sphinx-doc-paras->str (paras)
+  (join-str (apply #'append (interpose '("\n\n") paras)) ""))
+
+
+(defun sphinx-doc-lines->paras (lines)
+  (reverse
+   (mapcar
+    #'reverse
+    (car
+     (reduce (lambda (acc x)
+               (let ((paras (car acc))
+                     (prev-blank? (cdr acc)))
+                 (cond ((string= x "") (cons paras t))
+                       (prev-blank? (cons (cons (list x) paras) nil))
+                       (t (cons (cons (cons x (car paras)) (cdr paras)) nil)))))
+             (cdr lines)
+             :initial-value (cons (list (list (car lines))) nil))))))
+
+
+(defun sphinx-doc-parse-fields (fields-para)
+  (mapcar
+   (lambda (s)
+     (cond ((string-match "^:\\([a-z]+\\) \\([a-z]+\\) \\([a-zA-Z0-9_]+\\): \\(.*\n?\s*.*\\)$" s)
+            (make-field :key (match-string 1 s)
+                        :type (match-string 2 s)
+                        :arg (match-string 3 s)
+                        :desc (match-string 4 s)))
+           ((string-match "^:\\([a-z]+\\) \\([a-zA-Z0-9_]+\\): \\(.*\n?\s*.*\\)$" s)
+            (make-field :key (match-string 1 s)
+                        :arg (match-string 2 s)
+                        :desc (match-string 3 s)))
+           ((string-match "^:\\([a-z]+\\): \\(.*\n?\s*.*\\)$" s)
+            (make-field :key (match-string 1 s)
+                        :desc (match-string 2 s)))))
+   (mapcar (lambda (s)
+             (if (s-starts-with? ":" s) s (concat ":" s)))
+           (split-string (join-str fields-para "\n") "\n:"))))
+
+
+(defun sphinx-doc-merge-docs (old new)
+  (make-doc :summary (doc-summary old)
+            :before-fields (doc-before-fields old)
+            :after-fields (doc-after-fields old)
+            :fields (sphinx-doc-merge-fields
+                     (doc-fields old)
+                     (doc-fields new))))
+
+
+(defun sphinx-doc-merge-fields (old new)
+  (let ((field-index (mapcar (lambda (f)
+                               (if (field-arg f)
+                                   (cons (field-arg f) f)
+                                 (cons (field-key f) f)))
+                             old)))
+    (progn
+      (setq test-output field-index)
+      (mapcar (lambda (f)
+                (cond ((assoc (field-arg f) field-index)
+                       (cdr (assoc (field-arg f) field-index)))
+                      ((assoc (field-key f) field-index)
+                       (cdr (assoc (field-key f) field-index)))
+                      (t f)))
+             new))))
+
+
 (defun sphinx-doc ()
   "Interactive command to insert docstring skeleton for the
   function definition at point"
@@ -208,15 +335,22 @@
     (let ((fd (sphinx-doc-fun-def (current-line-string))))
       (if fd
           (let ((curr-indent (sphinx-doc-current-indent))
+                (old-ds (sphinx-doc-existing))
                 (new-ds (sphinx-doc-fndef->doc fd)))
             (progn
+              (when old-ds
+                (let ((ps (sphinx-get-region "\"\"\"" "\"\"\"" "forward")))
+                  (kill-region (- (elt ps 0) 3) (elt ps 1))))
               (move-end-of-line nil)
               (newline-and-indent)
-              (insert (sphinx-doc->str new-ds))
+              (if old-ds
+                  (insert (sphinx-doc->str (sphinx-doc-merge-docs old-ds new-ds)))
+                (insert (sphinx-doc->str new-ds)))
               (sphinx-doc-with-comment
                (lambda (b e)
                  (indent-rigidly b e (+ curr-indent python-indent))))
-              (search-backward "FIXME!")))))))
+              (dotimes (i 2) (search-backward "\"\"\""))
+              (dotimes (i 3) (forward-char))))))))
 
 
 (provide 'sphinx-doc)
