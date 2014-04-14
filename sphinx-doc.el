@@ -263,7 +263,16 @@
 
 
 (defun sphinx-doc-paras->str (paras)
-  (join-str (apply #'append (interpose '("\n\n") paras)) ""))
+  "Converts a list of paras (which in turn is a list of lines) to
+  text. This is done by adding a newline between two lines of
+  each para and a blank line between each para"
+  (join-str
+   (apply #'append
+          (interpose '("\n\n")
+                     (mapcar (lambda (p)
+                               (interpose "\n" p))
+                             paras)))
+   ""))
 
 
 (defun sphinx-doc-lines->paras (lines)
