@@ -336,6 +336,15 @@
              new))))
 
 
+(defun sphinx-doc-kill-old-doc ()
+  (save-excursion
+    (let ((ps (sphinx-get-region "\"\"\"" "\"\"\"" "forward")))
+      (kill-region (- (elt ps 0) 3) (elt ps 1))
+      (next-line)
+      (beginning-of-line)
+      (kill-line))))
+
+
 (defun sphinx-doc ()
   "Interactive command to insert docstring skeleton for the
   function definition at point"
@@ -347,14 +356,12 @@
                 (old-ds (sphinx-doc-existing))
                 (new-ds (sphinx-doc-fndef->doc fd)))
             (progn
-              (when old-ds
-                (let ((ps (sphinx-get-region "\"\"\"" "\"\"\"" "forward")))
-                  (kill-region (- (elt ps 0) 3) (elt ps 1))))
+              (when old-ds (sphinx-doc-kill-old-doc))
               (move-end-of-line nil)
               (newline-and-indent)
-              (if old-ds
-                  (insert (sphinx-doc->str (sphinx-doc-merge-docs old-ds new-ds)))
-                (insert (sphinx-doc->str new-ds)))
+              (insert
+               (sphinx-doc->str
+                (if old-ds (sphinx-doc-merge-docs old-ds new-ds) new-ds)))
               (sphinx-doc-with-comment
                (lambda (b e)
                  (indent-rigidly b e (+ curr-indent python-indent))))
