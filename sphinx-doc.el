@@ -182,11 +182,13 @@
    (filter
     (lambda (x) (not (equal x nil)))
     (list (s-format "\"\"\"$0\n" 'elt (list (doc-summary ds)))
-          (when (not (string= (doc-before-fields ds) ""))
+          (when (and (doc-before-fields ds)
+                     (not (string= (doc-before-fields ds) "")))
             (concat (doc-before-fields ds) "\n"))
           (join-str (mapcar #'sphinx-doc-field->str (doc-fields ds)) "\n")
           ""
-          (when (not (string= (doc-after-fields ds) ""))
+          (when (and (doc-after-fields ds)
+                     (not (string= (doc-after-fields ds) "")))
             (concat (doc-after-fields ds) "\n"))
           "\"\"\""))
    "\n"))
