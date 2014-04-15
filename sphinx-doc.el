@@ -146,9 +146,9 @@
                             (split-string argstrs ","))))))
 
 
-(defun sphinx-doc-fun-def (s)
-  "Returns a fndef object from the python function definition
-  represented by the input string"
+(defun sphinx-doc-str->fndef (s)
+  "Builds a fndef object from the python function definition
+  represented by a string. Returns fndef object or nil"
   (when (string-match sphinx-doc-fun-regex s)
     (make-fndef :name (match-string 1 s)
                 :args (sphinx-doc-fun-args (match-string 2 s)))))
@@ -175,8 +175,9 @@
                        ("desc" . ,(field-desc f)))))))
 
 
-(defun sphinx-doc->str (ds)
-  "Converts a doc object into it's string representation"
+(defun sphinx-doc-doc->str (ds)
+  "Converts a doc object into it's string representation that
+  will be inserted as the docstring"
   (join-str
    (filter
     (lambda (x) (not (equal x nil)))
@@ -363,7 +364,7 @@
   function definition at point"
   (interactive)
   (when (string= major-mode "python-mode")
-    (let ((fd (sphinx-doc-fun-def (current-line-string))))
+    (let ((fd (sphinx-doc-str->fndef (current-line-string))))
       (if fd
           (let ((curr-indent (sphinx-doc-current-indent))
                 (old-ds (sphinx-doc-existing))
@@ -373,7 +374,7 @@
               (move-end-of-line nil)
               (newline-and-indent)
               (insert
-               (sphinx-doc->str
+               (sphinx-doc-doc->str
                 (if old-ds (sphinx-doc-merge-docs old-ds new-ds) new-ds)))
               (sphinx-doc-with-comment
                (lambda (b e)
