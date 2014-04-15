@@ -54,10 +54,6 @@
         (mapcar (lambda (x) (and (funcall condp x) x)) lst)))
 
 
-(defun join-str (strs sep)
-  (mapconcat 'identity strs sep))
-
-
 (defun take-while (f seq)
   (if (funcall f (car seq))
       '()
@@ -178,20 +174,20 @@
 (defun sphinx-doc-doc->str (ds)
   "Converts a doc object into it's string representation that
   will be inserted as the docstring"
-  (join-str
+  (s-join
+   "\n"
    (filter
     (lambda (x) (not (equal x nil)))
     (list (s-format "\"\"\"$0\n" 'elt (list (doc-summary ds)))
           (when (and (doc-before-fields ds)
                      (not (string= (doc-before-fields ds) "")))
             (concat (doc-before-fields ds) "\n"))
-          (join-str (mapcar #'sphinx-doc-field->str (doc-fields ds)) "\n")
+          (s-join "\n" (mapcar #'sphinx-doc-field->str (doc-fields ds)))
           ""
           (when (and (doc-after-fields ds)
                      (not (string= (doc-after-fields ds) "")))
             (concat (doc-after-fields ds) "\n"))
-          "\"\"\""))
-   "\n"))
+          "\"\"\""))))
 
 
 (defun sphinx-doc-with-region (srch-beg srch-end f)
@@ -272,13 +268,13 @@
   "Converts a list of paras (which in turn is a list of lines) to
   text. This is done by adding a newline between two lines of
   each para and a blank line between each para"
-  (join-str
+  (s-join
+   ""
    (apply #'append
           (interpose '("\n\n")
                      (mapcar (lambda (p)
                                (interpose "\n" p))
-                             paras)))
-   ""))
+                             paras)))))
 
 
 (defun sphinx-doc-lines->paras (lines)
@@ -317,7 +313,7 @@
                         :desc (match-string 2 s)))))
    (mapcar (lambda (s)
              (if (s-starts-with? ":" s) s (concat ":" s)))
-           (split-string (join-str fields-para "\n") "\n:"))))
+           (split-string (s-join "\n" fields-para) "\n:"))))
 
 
 (defun sphinx-doc-merge-docs (old new)
