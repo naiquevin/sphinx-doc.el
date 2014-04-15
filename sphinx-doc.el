@@ -190,62 +190,6 @@
           "\"\"\""))))
 
 
-(defun sphinx-doc-with-region (srch-beg srch-end f)
-  "Selects a region by searching for the beginning expression
-  `srch-beg` and the end expression `srch-end` and executes the
-  function `f` on the region. Finally returns the cursor to the
-  initial position"
-  (save-excursion
-    (previous-line)
-    (search-backward srch-beg)
-    (next-line)
-    (move-beginning-of-line nil)
-    (let ((beg (point-at-bol)))
-      (search-forward srch-end)
-      (funcall f beg (point-at-eol)))))
-
-
-(defun sphinx-get-region (srch-beg srch-end direction)
-  (save-excursion
-    (if (string= direction "forward")
-        (search-forward srch-beg)
-      (search-backward srch-beg))
-    (let ((beg (point)))
-      (search-forward srch-end)
-      (vector beg (point)))))
-
-
-(defun sphinx-doc-with-comment (f)
-  "Selects the comment and runs the function `f` on region"
-  (sphinx-doc-with-region "\"\"\"" "\"\"\"" f))
-
-
-(defun sphinx-doc-current-indent ()
-  "Returns the indentation level of the current line, ie. by how
-  many number of spaces the current line is indented"
-  (save-excursion
-    (let ((bti (progn (back-to-indentation) (point)))
-          (bol (progn (beginning-of-line) (point))))
-      (- bti bol))))
-
-
-(defun sphinx-doc-exists? ()
-  "Returns whether the docstring already exists for a function"
-  (save-excursion
-    (next-line)
-    (s-starts-with? "\"\"\"" (s-trim (current-line-string)))))
-
-
-(defun sphinx-doc-existing ()
-  "Returns the docstring for a function if it's already added
-  otherwise nil"
-  (when (sphinx-doc-exists?)
-    (let* ((ps (sphinx-get-region "\"\"\"" "\"\"\"" "forward"))
-           (docstr (buffer-substring-no-properties (aref ps 0)
-                                                   (- (aref ps 1) 3))))
-      (sphinx-doc-parse docstr))))
-
-
 (defun sphinx-doc-parse (docstr)
   "Parse a docstring into it's equivalent doc object"
   (let* ((indent (save-excursion
@@ -345,14 +289,67 @@
              new))))
 
 
+(defun sphinx-doc-get-region (srch-beg srch-end direction)
+  "Selects a region and returns the beginning and end point as
+  vector"
+  (save-excursion
+    (if (string= direction "forward")
+        (search-forward srch-beg)
+      (search-backward srch-beg))
+    (let ((beg (point)))
+      (search-forward srch-end)
+      (vector beg (point)))))
+
+
+(defun sphinx-doc-current-indent ()
+  "Returns the indentation level of the current line, ie. by how
+  many number of spaces the current line is indented"
+  (save-excursion
+    (let ((bti (progn (back-to-indentation) (point)))
+          (bol (progn (beginning-of-line) (point))))
+      (- bti bol))))
+
+
+(defun sphinx-doc-exists? ()
+  "Returns whether the docstring already exists for a function"
+  (save-excursion
+    (next-line)
+    (s-starts-with? "\"\"\"" (s-trim (current-line-string)))))
+
+
+(defun sphinx-doc-existing ()
+  "Returns the docstring for a function if it's already added
+  otherwise nil"
+  (when (sphinx-doc-exists?)
+    (let* ((ps (sphinx-doc-get-region "\"\"\"" "\"\"\"" "forward"))
+           (docstr (buffer-substring-no-properties (aref ps 0)
+                                                   (- (aref ps 1) 3))))
+      (sphinx-doc-parse docstr))))
+
+
 (defun sphinx-doc-kill-old-doc ()
   "Kill the old docstring"
   (save-excursion
-    (let ((ps (sphinx-get-region "\"\"\"" "\"\"\"" "forward")))
+    (let ((ps (sphinx-doc-get-region "\"\"\"" "\"\"\"" "forward")))
       (kill-region (- (elt ps 0) 3) (elt ps 1))
       (next-line)
       (beginning-of-line)
       (kill-line))))
+
+
+(defun sphinx-doc-insert-doc (doc)
+  "Insert the doc as string for the current function"
+  (save-excursion
+    (move-end-of-line nil)
+    (newline-and-indent)
+    (insert (sphinx-doc-doc->str doc))))
+
+
+(defun sphinx-doc-indent-doc (indent)
+  "Indent the docstring for the current function"
+  (save-excursion
+    (let ((ps (sphinx-doc-get-region "\"\"\"" "\"\"\"" "forward")))
+      (indent-rigidly (elt ps 0) (elt ps 1) indent))))
 
 
 (defun sphinx-doc ()
@@ -367,16 +364,12 @@
                 (new-ds (sphinx-doc-fndef->doc fd)))
             (progn
               (when old-ds (sphinx-doc-kill-old-doc))
-              (move-end-of-line nil)
-              (newline-and-indent)
-              (insert
-               (sphinx-doc-doc->str
-                (if old-ds (sphinx-doc-merge-docs old-ds new-ds) new-ds)))
-              (sphinx-doc-with-comment
-               (lambda (b e)
-                 (indent-rigidly b e (+ curr-indent python-indent))))
-              (dotimes (i 2) (search-backward "\"\"\""))
-              (dotimes (i 3) (forward-char))))))))
+              (sphinx-doc-insert-doc
+               (if old-ds
+                   (sphinx-doc-merge-docs old-ds new-ds)
+                 new-ds))
+              (sphinx-doc-indent-doc (+ curr-indent python-indent))
+              (search-forward "\"\"\"")))))))
 
 
 (provide 'sphinx-doc)
