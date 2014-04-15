@@ -326,7 +326,6 @@
                                  (cons (field-key f) f)))
                              old)))
     (progn
-      (setq test-output field-index)
       (mapcar (lambda (f)
                 (cond ((assoc (field-arg f) field-index)
                        (cdr (assoc (field-arg f) field-index)))
