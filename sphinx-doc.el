@@ -39,7 +39,10 @@
 (require 's)
 
 
-;; some good-to-have helper functions
+;; Some good-to-have helper functions. Note that these have not been
+;; written for performance but rather to avoid including any more
+;; third party deps such as dash.el. These work sufficiently well for
+;; small input
 
 (defun current-line-string ()
   "Return current line as string"
@@ -52,7 +55,6 @@
 
 
 (defun join-str (strs sep)
-  "Joins list of strings `strs` together by the separator `sep`"
   (mapconcat 'identity strs sep))
 
 
@@ -107,9 +109,6 @@
   before-fields                                ; list of comments before fields
   after-fields                                 ; list of comments after fields
   fields)                                      ; list of field objects
-
-
-; (gv-define-simple-setter doc )
 
 
 (defun sphinx-doc-str->arg (s)
@@ -234,12 +233,15 @@
 
 
 (defun sphinx-doc-exists? ()
+  "Returns whether the docstring already exists for a function"
   (save-excursion
     (next-line)
     (s-starts-with? "\"\"\"" (s-trim (current-line-string)))))
 
 
 (defun sphinx-doc-existing ()
+  "Returns the docstring for a function if it's already added
+  otherwise nil"
   (when (sphinx-doc-exists?)
     (let* ((ps (sphinx-get-region "\"\"\"" "\"\"\"" "forward"))
            (docstr (buffer-substring-no-properties (aref ps 0)
@@ -248,6 +250,7 @@
 
 
 (defun sphinx-doc-parse (docstr)
+  "Parse a docstring into it's equivalent doc object"
   (let* ((indent (save-excursion
                    (next-line)
                    (sphinx-doc-current-indent)))
@@ -278,6 +281,8 @@
 
 
 (defun sphinx-doc-lines->paras (lines)
+  "Groups lines represented as list of strings into paras
+  represented as list of lists of lines"
   (reverse
    (mapcar
     #'reverse
@@ -293,6 +298,8 @@
 
 
 (defun sphinx-doc-parse-fields (fields-para)
+  "Parse fields section of a docstring into list of field
+  objects"
   (mapcar
    (lambda (s)
      (cond ((string-match "^:\\([a-z]+\\) \\([a-z]+\\) \\([a-zA-Z0-9_]+\\): \\(.*\n?\s*.*\\)$" s)
@@ -313,6 +320,9 @@
 
 
 (defun sphinx-doc-merge-docs (old new)
+  "Merge a new doc object into an old one. Effectively, only the
+  fields field of new doc are merged whereas the remaining fields
+  of the old object remain as they are"
   (make-doc :summary (doc-summary old)
             :before-fields (doc-before-fields old)
             :after-fields (doc-after-fields old)
@@ -322,6 +332,7 @@
 
 
 (defun sphinx-doc-merge-fields (old new)
+  "Merge new fields (list of field objects) into old fields"
   (let ((field-index (mapcar (lambda (f)
                                (if (field-arg f)
                                    (cons (field-arg f) f)
@@ -338,6 +349,7 @@
 
 
 (defun sphinx-doc-kill-old-doc ()
+  "Kill the old docstring"
   (save-excursion
     (let ((ps (sphinx-get-region "\"\"\"" "\"\"\"" "forward")))
       (kill-region (- (elt ps 0) 3) (elt ps 1))
