@@ -120,17 +120,17 @@
       (make-arg :name (car parts)))))
 
 
-(defun sphinx-doc-arg->field (a)
-  "Converts an arg object to a field object"
-  (make-field :key "param"
-              :arg (arg-name a)))
-
-
 (defun sphinx-doc-fndef->doc (f)
-  (make-doc :fields (append
-                     (mapcar #'sphinx-doc-arg->field (fndef-args f))
-                     (list (make-field :key "returns")
-                           (make-field :key "rtype")))))
+  "Builds a doc object solely from the fndef object. This is used
+  when a new docstring is being added"
+  (make-doc
+   :fields (append
+            (mapcar (lambda (a)
+                      (make-field :key "param"
+                                  :arg (arg-name a)))
+                    (fndef-args f))
+            (list (make-field :key "returns")
+                  (make-field :key "rtype")))))
 
 
 (defun sphinx-doc-fun-args (argstrs)
