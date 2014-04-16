@@ -3,6 +3,28 @@
 (require 'sphinx-doc)
 
 
+(ert-deftest sphinx-doc-test-str->arg ()
+  (assert (equal (sphinx-doc-str->arg "email")
+                 (make-arg :name "email")))
+  (assert (equal (sphinx-doc-str->arg "domain='example.com'")
+                 (make-arg :name "domain" :default "'example.com'")))
+  (assert (equal (sphinx-doc-str->arg "domain=\"example.com\"")
+                 (make-arg :name "domain" :default "\"example.com\"")))
+  (assert (equal (sphinx-doc-str->arg "ignore = None")
+                 (make-arg :name "ignore" :default "None"))))
+
+
+(ert-deftest sphinx-doc-test-fndef->doc ()
+  (assert (equal (sphinx-doc-fndef->doc
+                  (make-fndef :name "greet"
+                              :args (list (make-arg :name "name")
+                                          (make-arg :name "greeting" :default "'Hello'"))))
+                 (make-doc :fields (list (make-field :key "param" :arg "name")
+                                         (make-field :key "param" :arg "greeting")
+                                         (make-field :key "returns")
+                                         (make-field :key "rtype"))))))
+
+
 (ert-deftest sphinx-doc-test-fun-args ()
   (assert (equal (sphinx-doc-fun-args "") '()))
   (assert (equal (sphinx-doc-fun-args "name")
@@ -12,8 +34,6 @@
   (assert (equal (sphinx-doc-fun-args "name,email")
                  (list (make-arg :name "name") (make-arg :name "email"))))
   (assert (equal (sphinx-doc-fun-args "name, email=None")
-                 (list (make-arg :name "name") (make-arg :name "email" :default "None"))))
-  (assert (equal (sphinx-doc-fun-args "name, email = None")
                  (list (make-arg :name "name") (make-arg :name "email" :default "None"))))
   (assert (equal (sphinx-doc-fun-args "name, city='Mumbai', editor=\"emacs\"")
                  (list (make-arg :name "name")
@@ -34,6 +54,33 @@
                    ":param str greeting: "))
   (assert (string= (sphinx-doc-field->str (make-field :key "rtype"))
                    ":rtype: ")))
+
+
+(ert-deftest sphinx-doc-test-doc->str ()
+  (let ((d1 [cl-struct-doc "FIXME! briefly describe function" nil nil
+                           ([cl-struct-field "param" nil "name" ""]
+                            [cl-struct-field "returns" nil nil ""]
+                            [cl-struct-field "rtype" nil nil ""])])
+        (d2 [cl-struct-doc "Just another function"
+                           "This is some text before the fields section."
+                           "This is some text after the fields section."
+                           ([cl-struct-field "param" nil "name" ""]
+                            [cl-struct-field "returns" nil nil "constant 42"]
+                            [cl-struct-field "rtype" nil nil "integer"])]))
+    (assert (string= (sphinx-doc-doc->str d1)
+                     "\"\"\"FIXME! briefly describe function\n\n:param name: \n:returns: \n:rtype: \n\n\"\"\""))
+    (assert (string= (sphinx-doc-doc->str d2)
+                     "\"\"\"Just another function\n\nThis is some text before the fields section.\n\n:param name: \n:returns: constant 42\n:rtype: integer\n\nThis is some text after the fields section.\n\n\"\"\""))))
+
+
+(ert-deftest sphinx-doc-test-parse ()
+  (assert (equal (sphinx-doc-parse "FIXME! briefly describe function\n\n    :param name: \n    :returns: constant 42\n    :rtype: integer\n\n    " 4)
+                 (make-doc :summary "FIXME! briefly describe function"
+                           :before-fields ""
+                           :after-fields ""
+                           :fields (list (make-field :key "param" :arg "name")
+                                         (make-field :key "returns" :desc "constant 42")
+                                         (make-field :key "rtype" :desc "integer"))))))
 
 
 (ert-deftest sphinx-doc-test-lines->paras ()
@@ -81,3 +128,18 @@
            [cl-struct-field "param" "int" "priority" "priority"]
            [cl-struct-field "returns" nil nil nil]
            [cl-struct-field "rtype" nil nil "None"])))
+
+
+(ert-deftest sphinx-doc-test-merge-fields ()
+  (let ((fs1 '([cl-struct-field "param" "str" "name" "This is name"]
+               [cl-struct-field "returns" nil nil "constant 42"]
+               [cl-struct-field "rtype" nil nil "integer"]))
+        (fs2 '([cl-struct-field "param" nil "name" ""]
+               [cl-struct-field "param" nil "age" ""]
+               [cl-struct-field "returns" nil nil ""]
+               [cl-struct-field "rtype" nil nil ""])))
+    (assert (equal (sphinx-doc-merge-fields fs1 fs2)
+                   (list (make-field :key "param" :arg "name" :type "str" :desc "This is name")
+                         (make-field :key "param" :arg "age" :desc "")
+                         (make-field :key "returns" :desc "constant 42")
+                         (make-field :key "rtype" :desc "integer"))))))
