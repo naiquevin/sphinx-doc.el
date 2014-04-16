@@ -190,22 +190,20 @@
           "\"\"\""))))
 
 
-(defun sphinx-doc-parse (docstr)
+(defun sphinx-doc-parse (docstr indent)
   "Parse a docstring into it's equivalent doc object"
-  (let* ((indent (save-excursion
-                   (next-line)
-                   (sphinx-doc-current-indent)))
-         (lines (mapcar (lambda (line)
+  (let* ((lines (mapcar (lambda (line)
                           (s-chop-prefix (make-string indent 32) line))
                         (split-string docstr "\n")))
          (paras (sphinx-doc-lines->paras lines))
          (field-para? #'(lambda (p) (s-starts-with? ":" (car p)))))
-    (make-doc :summary (caar paras)
-              :before-fields (sphinx-doc-paras->str
-                              (take-while field-para? (cdr paras)))
-              :after-fields (sphinx-doc-paras->str
-                             (cdr (drop-while field-para? (cdr paras))))
-              :fields (sphinx-doc-parse-fields (car (filter field-para? paras))))))
+    (progn
+      (make-doc :summary (caar paras)
+                :before-fields (sphinx-doc-paras->str
+                                (take-while field-para? (cdr paras)))
+                :after-fields (sphinx-doc-paras->str
+                               (cdr (drop-while field-para? (cdr paras))))
+                :fields (sphinx-doc-parse-fields (car (filter field-para? paras)))))))
 
 
 (defun sphinx-doc-paras->str (paras)
@@ -323,8 +321,11 @@
   (when (sphinx-doc-exists?)
     (let* ((ps (sphinx-doc-get-region "\"\"\"" "\"\"\"" "forward"))
            (docstr (buffer-substring-no-properties (aref ps 0)
-                                                   (- (aref ps 1) 3))))
-      (sphinx-doc-parse docstr))))
+                                                   (- (aref ps 1) 3)))
+           (indent (save-excursion
+                     (next-line)
+                     (sphinx-doc-current-indent))))
+      (sphinx-doc-parse docstr indent))))
 
 
 (defun sphinx-doc-kill-old-doc ()
