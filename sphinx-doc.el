@@ -287,6 +287,10 @@
              new))))
 
 
+;; Note: Following few functions (those using `save-excursion`) must
+;; be invoked only when the cursor is on the function definition line.
+
+
 (defun sphinx-doc-get-region (srch-beg srch-end direction)
   "Selects a region and returns the beginning and end point as
   vector"
