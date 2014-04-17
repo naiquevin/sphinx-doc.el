@@ -361,20 +361,33 @@
   "Interactive command to insert docstring skeleton for the
   function definition at point"
   (interactive)
-  (when (string= major-mode "python-mode")
-    (let ((fd (sphinx-doc-str->fndef (current-line-string))))
-      (if fd
-          (let ((curr-indent (sphinx-doc-current-indent))
-                (old-ds (sphinx-doc-existing))
-                (new-ds (sphinx-doc-fndef->doc fd)))
-            (progn
-              (when old-ds (sphinx-doc-kill-old-doc))
-              (sphinx-doc-insert-doc
-               (if old-ds
-                   (sphinx-doc-merge-docs old-ds new-ds)
-                 new-ds))
-              (sphinx-doc-indent-doc (+ curr-indent python-indent))
-              (search-forward "\"\"\"")))))))
+  (let ((fd (sphinx-doc-str->fndef (current-line-string))))
+    (if fd
+        (let ((curr-indent (sphinx-doc-current-indent))
+              (old-ds (sphinx-doc-existing))
+              (new-ds (sphinx-doc-fndef->doc fd)))
+          (progn
+            (when old-ds (sphinx-doc-kill-old-doc))
+            (sphinx-doc-insert-doc
+             (if old-ds
+                 (sphinx-doc-merge-docs old-ds new-ds)
+               new-ds))
+            (sphinx-doc-indent-doc (+ curr-indent python-indent))
+            (search-forward "\"\"\""))))))
+
+
+(defvar sphinx-doc-mode-map
+  (let ((m (make-sparse-keymap)))
+    (define-key m (kbd "C-c M-d") 'sphinx-doc)
+    m))
+
+
+;;;###autoload
+(define-minor-mode sphinx-doc-mode
+  "Sphinx friendly docstring skeleton generation for Python code"
+  :init-value t
+  :lighter " Spnxd"
+  :keymap sphinx-doc-mode-map)
 
 
 (provide 'sphinx-doc)
