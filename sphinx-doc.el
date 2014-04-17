@@ -2,34 +2,59 @@
 ;;; functions.
 
 ;; Author: Vineet Naik <naikvin@gmail.com>
-;; Created: 14th October 2013
+;; Created on: 14th October 2013
+;; URL: https://github.com/naiquevin/sphinx-doc.el
+;; Version: 0.2.0
 
-;; License: MIT <http://opensource.org/licenses/MIT>
+;; This program is *not* a part of emacs and is provided under the MIT
+;; License (MIT) <http://opensource.org/licenses/MIT>
+;;
+;; Copyright (c) 2013 <naikvin@gmail.com>
+;;
+;; Permission is hereby granted, free of charge, to any person
+;; obtaining a copy of this software and associated documentation
+;; files (the "Software"), to deal in the Software without
+;; restriction, including without limitation the rights to use, copy,
+;; modify, merge, publish, distribute, sublicense, and/or sell copies
+;; of the Software, and to permit persons to whom the Software is
+;; furnished to do so, subject to the following conditions:
+;;
+;; The above copyright notice and this permission notice shall be
+;; included in all copies or substantial portions of the Software.
+;;
+;; THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+;; EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+;; MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+;; NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
+;; BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+;; ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+;; CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+;; SOFTWARE.
 
 ;;; Commentary:
-
-;; This file just provides a function `sphinx-doc` that can be used to
-;; generate skeleton of docstrings for Python functions. The structure
-;; of the docstring is according to Sphinx documentation generator
+;;
+;; This file provides a minor mode for inserting docstring skeleton
+;; for Python functions and methods. The structure of the docstring is
+;; as per the requirements of the Sphinx documentation generator
 ;; <http://sphinx-doc.org/index.html>
 
 ;;; Installation:
-
-;; Copy this file somewhere in your path and add the following lines
-;; to your .emacs (or the equivalent config file)
 ;;
-;; (require 'sphinx-doc)
+;; This package is yet to be published on MELPA. Until then, copy this
+;; file somewhere in your path and add the following lines to your
+;; .emacs (or the equivalent config file)
 ;;
-;; (add-hook 'python-mode-hook (lambda () (local-set-key (kbd "C-c M-d") #'sphinx-doc)))
+;; (add-hook 'python-mode-hook (lambda () (require 'sphinx-doc)))
 ;;
-;; This will bind the function `sphinx-doc` to `C-c M-d`. Choose this
-;; as per your liking.
+;; This will bind the interactive function `sphinx-doc` to `C-c
+;; M-d`.
 
 ;;; Usage:
+;;
+;; Inside a Python file, move the cursor to some function/method
+;; definition and hit `C-c M-d`
 
-;; In a Python file, move the cursor the function definition and type
-;; `C-c M-d` (or the key binding you have chosen). Alternatively,
-;; execute the function using `M-x sphinx-doc RET`
+;;; code begins here
 
 ;; include libs
 
@@ -392,4 +417,4 @@
 
 (provide 'sphinx-doc)
 
-;; sphinx-doc.el ends
+;;; code ends here
