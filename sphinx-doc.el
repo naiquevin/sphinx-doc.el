@@ -1,10 +1,9 @@
-;;; sphinx-doc.el -- Generate Sphinx friendly docstrings for Python
-;;; functions.
+;;; sphinx-doc.el -- Sphinx friendly docstrings for Python functions.
 
-;; Author: Vineet Naik <naikvin@gmail.com>
-;; Created on: 14th October 2013
-;; URL: https://github.com/naiquevin/sphinx-doc.el
-;; Version: 0.2.0
+;;; Author: Vineet Naik <naikvin@gmail.com>
+;;; Created on: 14th October 2013
+;;; URL: https://github.com/naiquevin/sphinx-doc.el
+;;; Version: 0.2.0
 
 ;; This program is *not* a part of emacs and is provided under the MIT
 ;; License (MIT) <http://opensource.org/licenses/MIT>
@@ -425,4 +424,4 @@
 
 (provide 'sphinx-doc)
 
-;;; code ends here
+;;; sphinx-doc.el ends here
