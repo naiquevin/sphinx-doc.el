@@ -1,4 +1,4 @@
-;;; sphinx-doc.el -- Sphinx friendly docstrings for Python functions
+;;; sphinx-doc.el --- Sphinx friendly docstrings for Python functions
 
 ;; Copyright (c) 2013 <naikvin@gmail.com>
 
