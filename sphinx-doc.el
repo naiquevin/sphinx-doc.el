@@ -1,9 +1,11 @@
-;;; sphinx-doc.el -- Sphinx friendly docstrings for Python functions.
+;;; sphinx-doc.el -- Sphinx friendly docstrings for Python functions
 
-;;; Author: Vineet Naik <naikvin@gmail.com>
-;;; Created on: 14th October 2013
-;;; URL: https://github.com/naiquevin/sphinx-doc.el
-;;; Version: 0.2.0
+;; Copyright (c) 2013 <naikvin@gmail.com>
+
+;; Author: Vineet Naik <naikvin@gmail.com>
+;; URL: https://github.com/naiquevin/sphinx-doc.el
+;; Version: 0.2.0
+;; Keywords: Sphinx, Python
 
 ;; This program is *not* a part of emacs and is provided under the MIT
 ;; License (MIT) <http://opensource.org/licenses/MIT>
@@ -37,29 +39,9 @@
 ;; as per the requirements of the Sphinx documentation generator
 ;; <http://sphinx-doc.org/index.html>
 
-;;; Installation:
-;;
-;; This package is yet to be published on MELPA. Until then, copy this
-;; file somewhere in your path and add the following lines to your
-;; .emacs (or the equivalent config file)
-;;
-;; (add-hook 'python-mode-hook (lambda () (require 'sphinx-doc)))
-;;
-;; This will bind the interactive function `sphinx-doc` to `C-c
-;; M-d`.
-
-;;; Usage:
-;;
-;; Inside a Python file, move the cursor to some function/method
-;; definition and hit `C-c M-d`
-
-;;; code begins here
-
-;; include libs
+;;; Code:
 
 (require 'cl)
-
-;; 3rd party deps
 (require 's)
 
 
