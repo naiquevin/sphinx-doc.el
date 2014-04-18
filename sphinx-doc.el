@@ -69,29 +69,29 @@
 ;; third party deps such as dash.el. These work sufficiently well for
 ;; small input
 
-(defun current-line-string ()
+(defun sphinx-doc-current-line ()
   "Return current line as string"
   (buffer-substring-no-properties (point-at-bol) (point-at-eol)))
 
 
-(defun filter (condp lst)
+(defun sphinx-doc-filter (condp lst)
   (delq nil
         (mapcar (lambda (x) (and (funcall condp x) x)) lst)))
 
 
-(defun take-while (f seq)
+(defun sphinx-doc-take-while (f seq)
   (if (funcall f (car seq))
       '()
-    (cons (car seq) (take-while f (cdr seq)))))
+    (cons (car seq) (sphinx-doc-take-while f (cdr seq)))))
 
 
-(defun drop-while (f seq)
+(defun sphinx-doc-drop-while (f seq)
   (if (funcall f (car seq))
       seq
-    (drop-while f (cdr seq))))
+    (sphinx-doc-drop-while f (cdr seq))))
 
 
-(defun interpose (sep seq)
+(defun sphinx-doc-interpose (sep seq)
   (cl-labels ((aux (xs)
                  (if (equal xs nil)
                      (cons sep nil)
@@ -108,24 +108,24 @@
 
 ;; struct definitions
 
-(cl-defstruct arg
+(cl-defstruct sphinx-doc-arg
   name      ; name of the arg
   default)  ; optional default value if specified
 
 
-(cl-defstruct fndef
+(cl-defstruct sphinx-doc-fndef
   name  ; name of the function
   args) ; list of arg objects
 
 
-(cl-defstruct field
+(cl-defstruct sphinx-doc-field
   key        ; one of the allowed field name keyword
   type       ; optional datatype
   arg        ; optional argument
   (desc "")) ; description
 
 
-(cl-defstruct doc
+(cl-defstruct sphinx-doc-doc
   (summary "FIXME! briefly describe function") ; summary line that fits on the first line
   before-fields                                ; list of comments before fields
   after-fields                                 ; list of comments after fields
@@ -136,22 +136,23 @@
   "Builds an arg object from string"
   (let ((parts (mapcar #'s-trim (split-string s "="))))
     (if (cdr parts)
-        (make-arg :name (car parts)
-                  :default (cadr parts))
-      (make-arg :name (car parts)))))
+        (make-sphinx-doc-arg :name (car parts)
+                             :default (cadr parts))
+      (make-sphinx-doc-arg :name (car parts)))))
 
 
 (defun sphinx-doc-fndef->doc (f)
   "Builds a doc object solely from the fndef object. This is used
   when a new docstring is being added"
-  (make-doc
+  (make-sphinx-doc-doc
    :fields (append
             (mapcar (lambda (a)
-                      (make-field :key "param"
-                                  :arg (arg-name a)))
-                    (fndef-args f))
-            (list (make-field :key "returns")
-                  (make-field :key "rtype")))))
+                      (make-sphinx-doc-field
+                       :key "param"
+                       :arg (sphinx-doc-arg-name a)))
+                    (sphinx-doc-fndef-args f))
+            (list (make-sphinx-doc-field :key "returns")
+                  (make-sphinx-doc-field :key "rtype")))))
 
 
 (defun sphinx-doc-fun-args (argstrs)
@@ -160,40 +161,43 @@
   `*args` and `**kwargs` will be ignored"
   (when (not (string= argstrs ""))
     (mapcar #'sphinx-doc-str->arg
-            (filter (lambda (str)
-                      (and (not (string= (substring str 0 1) "*"))
-                           (not (string= str "self"))))
-                    (mapcar #'s-trim
-                            (split-string argstrs ","))))))
+            (sphinx-doc-filter
+             (lambda (str)
+               (and (not (string= (substring str 0 1) "*"))
+                    (not (string= str "self"))))
+             (mapcar #'s-trim
+                     (split-string argstrs ","))))))
 
 
 (defun sphinx-doc-str->fndef (s)
   "Builds a fndef object from the python function definition
   represented by a string. Returns fndef object or nil"
   (when (string-match sphinx-doc-fun-regex s)
-    (make-fndef :name (match-string 1 s)
-                :args (sphinx-doc-fun-args (match-string 2 s)))))
+    (make-sphinx-doc-fndef
+     :name (match-string 1 s)
+     :args (sphinx-doc-fun-args (match-string 2 s)))))
 
 
 (defun sphinx-doc-field->str (f)
   "Convert a field object to it's string representation"
-  (cond ((and (stringp (field-arg f)) (stringp (field-type f)))
+  (cond ((and (stringp (sphinx-doc-field-arg f))
+              (stringp (sphinx-doc-field-type f)))
          (s-format ":${key} ${type} ${arg}: ${desc}"
                    'aget
-                   `(("key" . ,(field-key f))
-                     ("type" . ,(field-type f))
-                     ("arg" . ,(field-arg f))
-                     ("desc" . ,(field-desc f)))))
-        ((stringp (field-arg f))
+                   `(("key" . ,(sphinx-doc-field-key f))
+                     ("type" . ,(sphinx-doc-field-type f))
+                     ("arg" . ,(sphinx-doc-field-arg f))
+                     ("desc" . ,(sphinx-doc-field-desc f)))))
+        ((stringp (sphinx-doc-field-arg f))
          (s-format ":${key} ${arg}: ${desc}"
                    'aget
-                   `(("key" . ,(field-key f))
-                     ("arg" . ,(field-arg f))
-                     ("desc" . ,(field-desc f)))))
+                   `(("key" . ,(sphinx-doc-field-key f))
+                     ("arg" . ,(sphinx-doc-field-arg f))
+                     ("desc" . ,(sphinx-doc-field-desc f)))))
         (t (s-format ":${key}: ${desc}"
                      'aget
-                     `(("key" . ,(field-key f))
-                       ("desc" . ,(field-desc f)))))))
+                     `(("key" . ,(sphinx-doc-field-key f))
+                       ("desc" . ,(sphinx-doc-field-desc f)))))))
 
 
 (defun sphinx-doc-doc->str (ds)
@@ -201,17 +205,18 @@
   will be inserted as the docstring"
   (s-join
    "\n"
-   (filter
+   (sphinx-doc-filter
     (lambda (x) (not (equal x nil)))
-    (list (s-format "\"\"\"$0\n" 'elt (list (doc-summary ds)))
-          (when (and (doc-before-fields ds)
-                     (not (string= (doc-before-fields ds) "")))
-            (concat (doc-before-fields ds) "\n"))
-          (s-join "\n" (mapcar #'sphinx-doc-field->str (doc-fields ds)))
+    (list (s-format "\"\"\"$0\n" 'elt (list (sphinx-doc-doc-summary ds)))
+          (when (and (sphinx-doc-doc-before-fields ds)
+                     (not (string= (sphinx-doc-doc-before-fields ds) "")))
+            (concat (sphinx-doc-doc-before-fields ds) "\n"))
+          (s-join "\n" (mapcar #'sphinx-doc-field->str
+                               (sphinx-doc-doc-fields ds)))
           ""
-          (when (and (doc-after-fields ds)
-                     (not (string= (doc-after-fields ds) "")))
-            (concat (doc-after-fields ds) "\n"))
+          (when (and (sphinx-doc-doc-after-fields ds)
+                     (not (string= (sphinx-doc-doc-after-fields ds) "")))
+            (concat (sphinx-doc-doc-after-fields ds) "\n"))
           "\"\"\""))))
 
 
@@ -223,12 +228,14 @@
          (paras (sphinx-doc-lines->paras lines))
          (field-para? #'(lambda (p) (s-starts-with? ":" (car p)))))
     (progn
-      (make-doc :summary (caar paras)
-                :before-fields (sphinx-doc-paras->str
-                                (take-while field-para? (cdr paras)))
-                :after-fields (sphinx-doc-paras->str
-                               (cdr (drop-while field-para? (cdr paras))))
-                :fields (sphinx-doc-parse-fields (car (filter field-para? paras)))))))
+      (make-sphinx-doc-doc
+       :summary (caar paras)
+       :before-fields (sphinx-doc-paras->str
+                       (sphinx-doc-take-while field-para? (cdr paras)))
+       :after-fields (sphinx-doc-paras->str
+                      (cdr (sphinx-doc-drop-while field-para? (cdr paras))))
+       :fields (sphinx-doc-parse-fields
+                (car (sphinx-doc-filter field-para? paras)))))))
 
 
 (defun sphinx-doc-paras->str (paras)
@@ -238,10 +245,10 @@
   (s-join
    ""
    (apply #'append
-          (interpose '("\n\n")
-                     (mapcar (lambda (p)
-                               (interpose "\n" p))
-                             paras)))))
+          (sphinx-doc-interpose '("\n\n")
+                                (mapcar (lambda (p)
+                                          (sphinx-doc-interpose "\n" p))
+                                        paras)))))
 
 
 (defun sphinx-doc-lines->paras (lines)
@@ -267,17 +274,17 @@
   (mapcar
    (lambda (s)
      (cond ((string-match "^:\\([a-z]+\\) \\([a-z]+\\) \\([a-zA-Z0-9_]+\\): \\(.*\n?\s*.*\\)$" s)
-            (make-field :key (match-string 1 s)
-                        :type (match-string 2 s)
-                        :arg (match-string 3 s)
-                        :desc (match-string 4 s)))
+            (make-sphinx-doc-field :key (match-string 1 s)
+                                   :type (match-string 2 s)
+                                   :arg (match-string 3 s)
+                                   :desc (match-string 4 s)))
            ((string-match "^:\\([a-z]+\\) \\([a-zA-Z0-9_]+\\): \\(.*\n?\s*.*\\)$" s)
-            (make-field :key (match-string 1 s)
-                        :arg (match-string 2 s)
-                        :desc (match-string 3 s)))
+            (make-sphinx-doc-field :key (match-string 1 s)
+                                   :arg (match-string 2 s)
+                                   :desc (match-string 3 s)))
            ((string-match "^:\\([a-z]+\\): \\(.*\n?\s*.*\\)$" s)
-            (make-field :key (match-string 1 s)
-                        :desc (match-string 2 s)))))
+            (make-sphinx-doc-field :key (match-string 1 s)
+                                   :desc (match-string 2 s)))))
    (mapcar (lambda (s)
              (if (s-starts-with? ":" s) s (concat ":" s)))
            (split-string (s-join "\n" fields-para) "\n:"))))
@@ -287,29 +294,30 @@
   "Merge a new doc object into an old one. Effectively, only the
   fields field of new doc are merged whereas the remaining fields
   of the old object remain as they are"
-  (make-doc :summary (doc-summary old)
-            :before-fields (doc-before-fields old)
-            :after-fields (doc-after-fields old)
-            :fields (sphinx-doc-merge-fields
-                     (doc-fields old)
-                     (doc-fields new))))
+  (make-sphinx-doc-doc
+   :summary (sphinx-doc-doc-summary old)
+   :before-fields (sphinx-doc-doc-before-fields old)
+   :after-fields (sphinx-doc-doc-after-fields old)
+   :fields (sphinx-doc-merge-fields
+            (sphinx-doc-doc-fields old)
+            (sphinx-doc-doc-fields new))))
 
 
 (defun sphinx-doc-merge-fields (old new)
   "Merge new fields (list of field objects) into old fields"
   (let ((field-index (mapcar (lambda (f)
-                               (if (field-arg f)
-                                   (cons (field-arg f) f)
-                                 (cons (field-key f) f)))
+                               (if (sphinx-doc-field-arg f)
+                                   (cons (sphinx-doc-field-arg f) f)
+                                 (cons (sphinx-doc-field-key f) f)))
                              old)))
     (progn
       (mapcar (lambda (f)
-                (cond ((assoc (field-arg f) field-index)
-                       (cdr (assoc (field-arg f) field-index)))
-                      ((assoc (field-key f) field-index)
-                       (cdr (assoc (field-key f) field-index)))
+                (cond ((assoc (sphinx-doc-field-arg f) field-index)
+                       (cdr (assoc (sphinx-doc-field-arg f) field-index)))
+                      ((assoc (sphinx-doc-field-key f) field-index)
+                       (cdr (assoc (sphinx-doc-field-key f) field-index)))
                       (t f)))
-             new))))
+              new))))
 
 
 ;; Note: Following few functions (those using `save-excursion`) must
@@ -341,7 +349,7 @@
   "Returns whether the docstring already exists for a function"
   (save-excursion
     (next-line)
-    (s-starts-with? "\"\"\"" (s-trim (current-line-string)))))
+    (s-starts-with? "\"\"\"" (s-trim (sphinx-doc-current-line)))))
 
 
 (defun sphinx-doc-existing ()
@@ -386,7 +394,7 @@
   "Interactive command to insert docstring skeleton for the
   function definition at point"
   (interactive)
-  (let ((fd (sphinx-doc-str->fndef (current-line-string))))
+  (let ((fd (sphinx-doc-str->fndef (sphinx-doc-current-line))))
     (if fd
         (let ((curr-indent (sphinx-doc-current-indent))
               (old-ds (sphinx-doc-existing))
