@@ -6,7 +6,7 @@
 ;; URL: https://github.com/naiquevin/sphinx-doc.el
 ;; Version: 0.2.0
 ;; Keywords: Sphinx, Python
-;; Package-Requires: ((s "1.9.0"))
+;; Package-Requires: ((s "1.9.0") (cl-lib "0.5"))
 
 ;; This program is *not* a part of emacs and is provided under the MIT
 ;; License (MIT) <http://opensource.org/licenses/MIT>
@@ -42,7 +42,7 @@
 
 ;;; Code:
 
-(require 'cl)
+(require 'cl-lib)
 (require 's)
 
 
@@ -240,14 +240,14 @@
    (mapcar
     #'reverse
     (car
-     (reduce (lambda (acc x)
-               (let ((paras (car acc))
-                     (prev-blank? (cdr acc)))
-                 (cond ((string= x "") (cons paras t))
-                       (prev-blank? (cons (cons (list x) paras) nil))
-                       (t (cons (cons (cons x (car paras)) (cdr paras)) nil)))))
-             (cdr lines)
-             :initial-value (cons (list (list (car lines))) nil))))))
+     (cl-reduce (lambda (acc x)
+                  (let ((paras (car acc))
+                        (prev-blank? (cdr acc)))
+                    (cond ((string= x "") (cons paras t))
+                          (prev-blank? (cons (cons (list x) paras) nil))
+                          (t (cons (cons (cons x (car paras)) (cdr paras)) nil)))))
+                (cdr lines)
+                :initial-value (cons (list (list (car lines))) nil))))))
 
 
 (defun sphinx-doc-parse-fields (fields-para)
