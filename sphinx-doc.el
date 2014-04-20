@@ -36,7 +36,7 @@
 ;;; Commentary:
 ;;
 ;; This file provides a minor mode for inserting docstring skeleton
-;; for Python functions and methods. The structure of the docstring is
+;; for Python functions and methods.  The structure of the docstring is
 ;; as per the requirements of the Sphinx documentation generator
 ;; <http://sphinx-doc.org/index.html>
 
@@ -52,31 +52,37 @@
 ;; small input
 
 (defun sphinx-doc-current-line ()
-  "Return current line as string"
+  "Return current line as string."
   (buffer-substring-no-properties (point-at-bol) (point-at-eol)))
 
 
-(defun sphinx-doc-filter (condp lst)
+(defun sphinx-doc-filter (f xs)
+  "Return items from list that pass the predicate.
+F is the predicate, XS is the list of items"
   (delq nil
-        (mapcar (lambda (x) (and (funcall condp x) x)) lst)))
+        (mapcar (lambda (x) (and (funcall f x) x)) xs)))
 
 
-(defun sphinx-doc-take-while (f seq)
-  "Returns seq of items from seq while f returns true."
-  (if (not (funcall f (car seq)))
+(defun sphinx-doc-take-while (f xs)
+  "Return items from list while predicate returns true.
+F is the predicate, XS is the list of items."
+  (if (not (funcall f (car xs)))
       '()
-    (cons (car seq) (sphinx-doc-take-while f (cdr seq)))))
+    (cons (car xs) (sphinx-doc-take-while f (cdr xs)))))
 
 
-(defun sphinx-doc-drop-while (f seq)
-  "Returns seq of items from seq after f first returns true."
-  (when seq
-    (if (funcall f (car seq))
-        (sphinx-doc-drop-while f (cdr seq))
-      seq)))
+(defun sphinx-doc-drop-while (f xs)
+  "Return items from list after predicate first returns true.
+F is the predicate, XS is the list of items."
+  (when xs
+    (if (funcall f (car xs))
+        (sphinx-doc-drop-while f (cdr xs))
+      xs)))
 
 
 (defun sphinx-doc-interpose (sep seq)
+  "Return list of items separated by the separator.
+SEP is the separator, SEQ is the list of items."
   (cl-labels ((aux (xs)
                  (if (equal xs nil)
                      (cons sep nil)
@@ -118,7 +124,7 @@
 
 
 (defun sphinx-doc-str->arg (s)
-  "Builds an arg object from string"
+  "Build an arg object from string S."
   (let ((parts (mapcar #'s-trim (split-string s "="))))
     (if (cdr parts)
         (make-sphinx-doc-arg :name (car parts)
@@ -127,8 +133,7 @@
 
 
 (defun sphinx-doc-fndef->doc (f)
-  "Builds a doc object solely from the fndef object. This is used
-  when a new docstring is being added"
+  "Build a doc object solely from fndef F."
   (make-sphinx-doc-doc
    :fields (append
             (mapcar (lambda (a)
@@ -141,9 +146,9 @@
 
 
 (defun sphinx-doc-fun-args (argstrs)
-  "Returns arguments (list of arg struct objects) from the Python
-  function definition as a string. Note that args of type `self`,
-  `*args` and `**kwargs` will be ignored"
+  "Extract list of arg objects from string ARGSTRS.
+ARGSTRS is the string representing function definition in Python.
+Note that the arguments self, *args and **kwargs are ignored."
   (when (not (string= argstrs ""))
     (mapcar #'sphinx-doc-str->arg
             (sphinx-doc-filter
@@ -155,8 +160,9 @@
 
 
 (defun sphinx-doc-str->fndef (s)
-  "Builds a fndef object from the python function definition
-  represented by a string. Returns fndef object or nil"
+  "Build a fndef object from string S.
+S is a string representation of the python function definition
+Returns nil if string is not a function definition."
   (when (string-match sphinx-doc-fun-regex s)
     (make-sphinx-doc-fndef
      :name (match-string 1 s)
@@ -164,7 +170,7 @@
 
 
 (defun sphinx-doc-field->str (f)
-  "Convert a field object to it's string representation"
+  "Convert a field object F to it's string representation."
   (cond ((and (stringp (sphinx-doc-field-arg f))
               (stringp (sphinx-doc-field-type f)))
          (s-format ":${key} ${type} ${arg}: ${desc}"
@@ -186,8 +192,7 @@
 
 
 (defun sphinx-doc-doc->str (ds)
-  "Converts a doc object into it's string representation that
-  will be inserted as the docstring"
+  "Convert a doc object DS into string representation."
   (s-join
    "\n"
    (sphinx-doc-filter
@@ -206,7 +211,8 @@
 
 
 (defun sphinx-doc-parse (docstr indent)
-  "Parse a docstring into it's equivalent doc object"
+  "Parse docstring DOCSTR into it's equivalent doc object.
+INDENT is the current indentation level of the Python function."
   (let* ((lines (mapcar (lambda (line)
                           (s-chop-prefix (make-string indent 32) line))
                         (split-string docstr "\n")))
@@ -225,9 +231,10 @@
 
 
 (defun sphinx-doc-paras->str (paras)
-  "Converts a list of paras (which in turn is a list of lines) to
-  text. This is done by adding a newline between two lines of
-  each para and a blank line between each para"
+  "Convert PARAS to string.
+PARAS are list of paragraphs (which in turn are list of lines).
+This is done by adding a newline between two lines of each para
+and a blank line between each para."
   (s-join
    ""
    (apply #'append
@@ -238,8 +245,7 @@
 
 
 (defun sphinx-doc-lines->paras (lines)
-  "Groups lines represented as list of strings into paras
-  represented as list of lists of lines"
+  "Group LINES which are list of strings into paragraphs."
   (reverse
    (mapcar
     #'reverse
@@ -255,8 +261,8 @@
 
 
 (defun sphinx-doc-parse-fields (fields-para)
-  "Parse fields section of a docstring into list of field
-  objects"
+  "Parse FIELDS-PARA into list of field objects.
+FIELDS-PARA is the fields section of the docstring."
   (mapcar
    (lambda (s)
      (cond ((string-match "^:\\([a-z]+\\) \\([a-z]+\\) \\([a-zA-Z0-9_]+\\): \\(.*\n?\s*.*\\)$" s)
@@ -277,9 +283,9 @@
 
 
 (defun sphinx-doc-merge-docs (old new)
-  "Merge a new doc object into an old one. Effectively, only the
-  fields field of new doc are merged whereas the remaining fields
-  of the old object remain as they are"
+  "Merge OLD and NEW doc objects.
+Effectively, only the fields field of new doc are merged whereas
+the remaining fields of the old object stay as they are."
   (make-sphinx-doc-doc
    :summary (sphinx-doc-doc-summary old)
    :before-fields (sphinx-doc-doc-before-fields old)
@@ -290,7 +296,9 @@
 
 
 (defun sphinx-doc-merge-fields (old new)
-  "Merge new fields (list of field objects) into old fields"
+  "Merge old and new fields together.
+OLD is the list of old field objects, NEW is the list of new
+field objects."
   (let ((field-index (mapcar (lambda (f)
                                (if (sphinx-doc-field-arg f)
                                    (cons (sphinx-doc-field-arg f) f)
@@ -309,10 +317,10 @@
 ;; Note: Following few functions (those using `save-excursion`) must
 ;; be invoked only when the cursor is on the function definition line.
 
-
 (defun sphinx-doc-get-region (srch-beg srch-end direction)
-  "Selects a region and returns the beginning and end point as
-  vector"
+  "Return the beginning and end points of a region by searching.
+SRCH-BEG and SRCH-END are the chars to search for and DIRECTION
+is the direction to search in."
   (save-excursion
     (if (string= direction "forward")
         (search-forward srch-beg)
@@ -323,8 +331,8 @@
 
 
 (defun sphinx-doc-current-indent ()
-  "Returns the indentation level of the current line, ie. by how
-  many number of spaces the current line is indented"
+  "Return the indentation level of the current line.
+ie. by how many number of spaces the current line is indented"
   (save-excursion
     (let ((bti (progn (back-to-indentation) (point)))
           (bol (progn (beginning-of-line) (point))))
@@ -332,15 +340,14 @@
 
 
 (defun sphinx-doc-exists? ()
-  "Returns whether the docstring already exists for a function"
+  "Return whether the docstring already exists for a function."
   (save-excursion
     (next-line)
     (s-starts-with? "\"\"\"" (s-trim (sphinx-doc-current-line)))))
 
 
 (defun sphinx-doc-existing ()
-  "Returns the docstring for a function if it's already added
-  otherwise nil"
+  "Return docstring of the function if it exists else nil."
   (when (sphinx-doc-exists?)
     (let* ((ps (sphinx-doc-get-region "\"\"\"" "\"\"\"" "forward"))
            (docstr (buffer-substring-no-properties (aref ps 0)
@@ -352,7 +359,7 @@
 
 
 (defun sphinx-doc-kill-old-doc ()
-  "Kill the old docstring"
+  "Kill the old docstring for the current Python function."
   (save-excursion
     (let ((ps (sphinx-doc-get-region "\"\"\"" "\"\"\"" "forward")))
       (kill-region (- (elt ps 0) 3) (elt ps 1))
@@ -362,7 +369,7 @@
 
 
 (defun sphinx-doc-insert-doc (doc)
-  "Insert the doc as string for the current function"
+  "Insert the DOC as string for the current Python function."
   (save-excursion
     (move-end-of-line nil)
     (newline-and-indent)
@@ -370,15 +377,17 @@
 
 
 (defun sphinx-doc-indent-doc (indent)
-  "Indent the docstring for the current function"
+  "Indent docstring for the current function.
+INDENT is the level of indentation"
   (save-excursion
     (let ((ps (sphinx-doc-get-region "\"\"\"" "\"\"\"" "forward")))
       (indent-rigidly (elt ps 0) (elt ps 1) indent))))
 
 
 (defun sphinx-doc ()
-  "Interactive command to insert docstring skeleton for the
-  function definition at point"
+  "Insert docstring for the Python function definition at point.
+This is an interactive function and the docstring generated is as
+per the requirement of Sphinx documentation generator."
   (interactive)
   (let ((fd (sphinx-doc-str->fndef (sphinx-doc-current-line))))
     (if fd
@@ -403,7 +412,7 @@
 
 ;;;###autoload
 (define-minor-mode sphinx-doc-mode
-  "Sphinx friendly docstring skeleton generation for Python code"
+  "Sphinx friendly docstring generation for Python code."
   :init-value t
   :lighter " Spnxd"
   :keymap sphinx-doc-mode-map)
