@@ -62,15 +62,18 @@
 
 
 (defun sphinx-doc-take-while (f seq)
-  (if (funcall f (car seq))
+  "Returns seq of items from seq while f returns true."
+  (if (not (funcall f (car seq)))
       '()
     (cons (car seq) (sphinx-doc-take-while f (cdr seq)))))
 
 
 (defun sphinx-doc-drop-while (f seq)
-  (if (funcall f (car seq))
-      seq
-    (sphinx-doc-drop-while f (cdr seq))))
+  "Returns seq of items from seq after f first returns true."
+  (when seq
+    (if (funcall f (car seq))
+        (sphinx-doc-drop-while f (cdr seq))
+      seq)))
 
 
 (defun sphinx-doc-interpose (sep seq)
@@ -208,14 +211,15 @@
                           (s-chop-prefix (make-string indent 32) line))
                         (split-string docstr "\n")))
          (paras (sphinx-doc-lines->paras lines))
-         (field-para? #'(lambda (p) (s-starts-with? ":" (car p)))))
+         (field-para? #'(lambda (p) (s-starts-with? ":" (car p))))
+         (comment? #'(lambda (p) (not (funcall field-para? p)))))
     (progn
       (make-sphinx-doc-doc
        :summary (caar paras)
        :before-fields (sphinx-doc-paras->str
-                       (sphinx-doc-take-while field-para? (cdr paras)))
+                       (sphinx-doc-take-while comment? (cdr paras)))
        :after-fields (sphinx-doc-paras->str
-                      (cdr (sphinx-doc-drop-while field-para? (cdr paras))))
+                      (cdr (sphinx-doc-drop-while comment? (cdr paras))))
        :fields (sphinx-doc-parse-fields
                 (car (sphinx-doc-filter field-para? paras)))))))
 
