@@ -342,7 +342,7 @@ ie. by how many number of spaces the current line is indented"
 (defun sphinx-doc-exists? ()
   "Return whether the docstring already exists for a function."
   (save-excursion
-    (next-line)
+    (forward-line)
     (s-starts-with? "\"\"\"" (s-trim (sphinx-doc-current-line)))))
 
 
@@ -353,7 +353,7 @@ ie. by how many number of spaces the current line is indented"
            (docstr (buffer-substring-no-properties (aref ps 0)
                                                    (- (aref ps 1) 3)))
            (indent (save-excursion
-                     (next-line)
+                     (forward-line)
                      (sphinx-doc-current-indent))))
       (sphinx-doc-parse docstr indent))))
 
@@ -363,8 +363,7 @@ ie. by how many number of spaces the current line is indented"
   (save-excursion
     (let ((ps (sphinx-doc-get-region "\"\"\"" "\"\"\"" "forward")))
       (kill-region (- (elt ps 0) 3) (elt ps 1))
-      (next-line)
-      (beginning-of-line)
+      (forward-line)
       (kill-line))))
 
 
