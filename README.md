@@ -13,11 +13,20 @@ per the requirement of the
 Installation
 ------------
 
-This package is yet to be added on
-[MELPA](http://melpa.milkbox.net/#/). Until then, it can be manually
-installed by copying the `sphinx-doc.el` file somewhere in the load
-path and adding the following lines to your `.emacs` (or the
-equivalent config file)
+This package can be installed from
+[MELPA](http://melpa.milkbox.net/#/). To do so, run `M-x
+package-list-packages`, then search for "sphinx-doc". Mark it with `i`
+and finally press `x` to install.
+
+To install manually, download and copy the `sphinx-doc.el` file
+somewhere in the load path.
+
+
+Configuration
+-------------
+
+Add the following line to your `.emacs` (or the equivalent config
+file)
 
 ```elisp
     (add-hook 'python-mode-hook (lambda () (require 'sphinx-doc)))
