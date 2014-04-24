@@ -363,8 +363,8 @@ ie. by how many number of spaces the current line is indented"
   "Return docstring of the function if it exists else nil."
   (when (sphinx-doc-exists?)
     (let* ((ps (sphinx-doc-get-region "\"\"\"" "\"\"\"" "forward"))
-           (docstr (buffer-substring-no-properties (aref ps 0)
-                                                   (- (aref ps 1) 3)))
+           (docstr (buffer-substring-no-properties (elt ps 0)
+                                                   (- (elt ps 1) 3)))
            (indent (save-excursion
                      (search-forward-regexp sphinx-doc-fun-end-regex)
                      (sphinx-doc-current-indent))))
