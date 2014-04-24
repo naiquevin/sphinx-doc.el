@@ -321,14 +321,11 @@ field objects."
 ;; Note: Following few functions (those using `save-excursion`) must
 ;; be invoked only when the cursor is on the function definition line.
 
-(defun sphinx-doc-get-region (srch-beg srch-end direction)
+(defun sphinx-doc-get-region (srch-beg srch-end)
   "Return the beginning and end points of a region by searching.
-SRCH-BEG and SRCH-END are the chars to search for and DIRECTION
-is the direction to search in."
+SRCH-BEG and SRCH-END are the chars to search for."
   (save-excursion
-    (if (string= direction "forward")
-        (search-forward-regexp srch-beg)
-      (search-backward-regexp srch-beg))
+    (search-forward-regexp srch-beg)
     (let ((beg (point)))
       (search-forward-regexp srch-end)
       (vector beg (point)))))
@@ -347,8 +344,7 @@ ie. by how many number of spaces the current line is indented"
   "Return the Python function definition as a string."
   (save-excursion
     (let ((ps (sphinx-doc-get-region sphinx-doc-fun-beg-regex
-                                     sphinx-doc-fun-end-regex
-                                     "forward")))
+                                     sphinx-doc-fun-end-regex)))
       (buffer-substring-no-properties (- (elt ps 0) 3) (- (elt ps 1) 1)))))
 
 
@@ -362,7 +358,7 @@ ie. by how many number of spaces the current line is indented"
 (defun sphinx-doc-existing ()
   "Return docstring of the function if it exists else nil."
   (when (sphinx-doc-exists?)
-    (let* ((ps (sphinx-doc-get-region "\"\"\"" "\"\"\"" "forward"))
+    (let* ((ps (sphinx-doc-get-region "\"\"\"" "\"\"\""))
            (docstr (buffer-substring-no-properties (elt ps 0)
                                                    (- (elt ps 1) 3)))
            (indent (save-excursion
@@ -376,7 +372,7 @@ ie. by how many number of spaces the current line is indented"
 INDENT is an integer representing the number of spaces the
 function body is indented from the beginning of the line"
   (save-excursion
-    (let ((ps (sphinx-doc-get-region "\"\"\"" "\"\"\"\\(?:\n\\)?" "forward")))
+    (let ((ps (sphinx-doc-get-region "\"\"\"" "\"\"\"\\(?:\n\\)?")))
       (kill-region (- (elt ps 0) 3) (+ (elt ps 1) indent)))))
 
 
@@ -394,7 +390,7 @@ function body is indented from the beginning of the line"
   "Indent docstring for the current function.
 INDENT is the level of indentation"
   (save-excursion
-    (let ((ps (sphinx-doc-get-region "\"\"\"" "\"\"\"" "forward")))
+    (let ((ps (sphinx-doc-get-region "\"\"\"" "\"\"\"")))
       (indent-rigidly (elt ps 0) (elt ps 1) indent))))
 
 
