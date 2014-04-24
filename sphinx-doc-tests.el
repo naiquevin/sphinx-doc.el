@@ -42,7 +42,11 @@
   (cl-assert (equal (sphinx-doc-fun-args "self, name")
                     (list (make-sphinx-doc-arg :name "name"))))
   (cl-assert (equal (sphinx-doc-fun-args "name, *args, **kwargs")
-                    (list (make-sphinx-doc-arg :name "name")))))
+                    (list (make-sphinx-doc-arg :name "name"))))
+  (cl-assert (equal (sphinx-doc-fun-args "name, city='Mumbai',\n                      editor=\"emacs\"")
+                    (list (make-sphinx-doc-arg :name "name")
+                          (make-sphinx-doc-arg :name "city" :default "'Mumbai'")
+                          (make-sphinx-doc-arg :name "editor" :default "\"emacs\"")))))
 
 
 (ert-deftest sphinx-doc-test-field->str ()

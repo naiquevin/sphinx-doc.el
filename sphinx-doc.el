@@ -94,7 +94,11 @@ SEP is the separator, SEQ is the list of items."
 
 ;; regular expression to identify a valid function definition in
 ;; python and match it's name and arguments
-(defconst sphinx-doc-fun-regex "^\s*def \\([a-zA-Z0-9_]+\\)(\\(.*\\)):$")
+(defconst sphinx-doc-fun-regex "^ *def \\([a-zA-Z0-9_]+\\)(\\(\\(?:.\\|\n\\)*\\)):$")
+
+;; regexes for beginning and end of python function definitions
+(defconst sphinx-doc-fun-beg-regex "def")
+(defconst sphinx-doc-fun-end-regex ":\\(?:\n\\)?")
 
 
 ;; struct definitions
@@ -323,10 +327,10 @@ SRCH-BEG and SRCH-END are the chars to search for and DIRECTION
 is the direction to search in."
   (save-excursion
     (if (string= direction "forward")
-        (search-forward srch-beg)
-      (search-backward srch-beg))
+        (search-forward-regexp srch-beg)
+      (search-backward-regexp srch-beg))
     (let ((beg (point)))
-      (search-forward srch-end)
+      (search-forward-regexp srch-end)
       (vector beg (point)))))
 
 
@@ -339,10 +343,19 @@ ie. by how many number of spaces the current line is indented"
       (- bti bol))))
 
 
+(defun sphinx-doc-fndef-str ()
+  "Return the Python function definition as a string."
+  (save-excursion
+    (let ((ps (sphinx-doc-get-region sphinx-doc-fun-beg-regex
+                                     sphinx-doc-fun-end-regex
+                                     "forward")))
+      (buffer-substring-no-properties (- (elt ps 0) 3) (- (elt ps 1) 1)))))
+
+
 (defun sphinx-doc-exists? ()
   "Return whether the docstring already exists for a function."
   (save-excursion
-    (forward-line)
+    (search-forward-regexp sphinx-doc-fun-end-regex)
     (s-starts-with? "\"\"\"" (s-trim (sphinx-doc-current-line)))))
 
 
@@ -353,23 +366,25 @@ ie. by how many number of spaces the current line is indented"
            (docstr (buffer-substring-no-properties (aref ps 0)
                                                    (- (aref ps 1) 3)))
            (indent (save-excursion
-                     (forward-line)
+                     (search-forward-regexp sphinx-doc-fun-end-regex)
                      (sphinx-doc-current-indent))))
       (sphinx-doc-parse docstr indent))))
 
 
-(defun sphinx-doc-kill-old-doc ()
-  "Kill the old docstring for the current Python function."
+(defun sphinx-doc-kill-old-doc (indent)
+  "Kill the old docstring for the current Python function.
+INDENT is an integer representing the number of spaces the
+function body is indented from the beginning of the line"
   (save-excursion
-    (let ((ps (sphinx-doc-get-region "\"\"\"" "\"\"\"" "forward")))
-      (kill-region (- (elt ps 0) 3) (elt ps 1))
-      (forward-line)
-      (kill-line))))
+    (let ((ps (sphinx-doc-get-region "\"\"\"" "\"\"\"\\(?:\n\\)?" "forward")))
+      (kill-region (- (elt ps 0) 3) (+ (elt ps 1) indent)))))
 
 
 (defun sphinx-doc-insert-doc (doc)
   "Insert the DOC as string for the current Python function."
   (save-excursion
+    (search-forward-regexp sphinx-doc-fun-end-regex)
+    (forward-line -1)
     (move-end-of-line nil)
     (newline-and-indent)
     (insert (sphinx-doc-doc->str doc))))
@@ -388,18 +403,21 @@ INDENT is the level of indentation"
 This is an interactive function and the docstring generated is as
 per the requirement of Sphinx documentation generator."
   (interactive)
-  (let ((fd (sphinx-doc-str->fndef (sphinx-doc-current-line))))
+  (if (string= (thing-at-point 'word) "def")
+      (back-to-indentation)
+    (search-backward-regexp sphinx-doc-fun-beg-regex))
+  (let ((fd (sphinx-doc-str->fndef (sphinx-doc-fndef-str))))
     (if fd
-        (let ((curr-indent (sphinx-doc-current-indent))
+        (let ((indent (+ (sphinx-doc-current-indent) python-indent))
               (old-ds (sphinx-doc-existing))
               (new-ds (sphinx-doc-fndef->doc fd)))
           (progn
-            (when old-ds (sphinx-doc-kill-old-doc))
+            (when old-ds (sphinx-doc-kill-old-doc indent))
             (sphinx-doc-insert-doc
              (if old-ds
                  (sphinx-doc-merge-docs old-ds new-ds)
                new-ds))
-            (sphinx-doc-indent-doc (+ curr-indent python-indent))
+            (sphinx-doc-indent-doc indent)
             (search-forward "\"\"\""))))))
 
 
