@@ -1,6 +1,13 @@
 Changes
 =======
 
+0.3.0
+-----
+
+* Support for Python functions with the parameter list spanning
+  multiple lines
+
+
 0.2.0
 -----
 
