@@ -29,7 +29,9 @@ Add the following line to your `.emacs` (or the equivalent config
 file)
 
 ```elisp
-    (add-hook 'python-mode-hook (lambda () (require 'sphinx-doc)))
+    (add-hook 'python-mode-hook (lambda ()
+                                  (require 'sphinx-doc)
+                                  (sphinx-doc-mode t)))
 ```
 
 This will enable the `sphinx-doc-mode` and bind the interactive

@@ -426,7 +426,7 @@ per the requirement of Sphinx documentation generator."
 ;;;###autoload
 (define-minor-mode sphinx-doc-mode
   "Sphinx friendly docstring generation for Python code."
-  :init-value t
+  :init-value nil
   :lighter " Spnxd"
   :keymap sphinx-doc-mode-map)
 
