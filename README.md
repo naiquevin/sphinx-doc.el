@@ -51,8 +51,8 @@ Demo
 ![Sphinx-doc](../master/demo.gif?raw=true)
 
 
-Caveat
-------
+Known Issues
+------------
 
 * When calling the function interactively, if the cursor is not on the
   head of a function definition (ie. the keyword `def`, function name
