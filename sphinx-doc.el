@@ -404,7 +404,7 @@ per the requirement of Sphinx documentation generator."
     (search-backward-regexp sphinx-doc-fun-beg-regex))
   (let ((fd (sphinx-doc-str->fndef (sphinx-doc-fndef-str))))
     (if fd
-        (let ((indent (+ (sphinx-doc-current-indent) python-indent))
+        (let ((indent (+ (sphinx-doc-current-indent) sphinx-doc-python-indent))
               (old-ds (sphinx-doc-existing))
               (new-ds (sphinx-doc-fndef->doc fd)))
           (progn
@@ -428,7 +428,14 @@ per the requirement of Sphinx documentation generator."
   "Sphinx friendly docstring generation for Python code."
   :init-value nil
   :lighter " Spnxd"
-  :keymap sphinx-doc-mode-map)
+  :keymap sphinx-doc-mode-map
+  (when sphinx-doc-mode ; ON
+    (set (make-local-variable 'sphinx-doc-python-indent)
+         (cond ((boundp 'python-indent-offset)
+                python-indent-offset)
+               ((boundp 'python-indent)
+                python-indent)
+               (t 4)))))
 
 
 (provide 'sphinx-doc)
