@@ -145,7 +145,7 @@
                  "                   this is the second line of sender param"
                  "                   this is the third line of sender param"
                  ":param int priority: priority"
-                 ":returns: "
+                 ":returns:"
                  ":rtype: None"))
               '([cl-struct-sphinx-doc-field "param" "str" "sender" "email address of the sender\n                   this is the second line of sender param\n                   this is the third line of sender param"]
                 [cl-struct-sphinx-doc-field "param" "int" "priority" "priority"]
