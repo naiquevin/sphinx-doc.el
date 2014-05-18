@@ -88,50 +88,69 @@
 
 
 (ert-deftest sphinx-doc-test-lines->paras ()
-  (cl-assert (sphinx-doc-lines->paras
-              '("Send message to a recipient as per the priority"
-                ""
-                "This is before comment. "
-                ""
-                "This is also before the comment but a second para"
-                ""
-                ":param str sender: email address of the sender"
-                "                   this is the second line of sender param"
-                ":param str recipient: email address of the receiver"
-                ":param str message_body: message to send"
-                ":param int priority: priority"
-                ":returns: nothing"
-                ":rtype: None"
-                ""
-                "This is after comment" "" ""))
-             '(("Send message to a recipient as per the priority")
-               ("This is before comment. ")
-               ("This is also before the comment but a second para")
-               (":param str sender: email address of the sender"
-                "                   this is the second line of sender param"
-                ":param str recipient: email address of the receiver"
-                ":param str message_body: message to send"
-                ":param int priority: priority"
-                ":returns: nothing"
-                ":rtype: None")
-               ("This is after comment"))))
+  (cl-assert (equal
+              (sphinx-doc-lines->paras
+               '("Send message to a recipient as per the priority"
+                 ""
+                 "This is before comment. "
+                 ""
+                 "This is also before the comment but a second para"
+                 ""
+                 ":param str sender: email address of the sender"
+                 "                   this is the second line of sender param"
+                 "                   this is the third line of sender param"
+                 ":param str recipient: email address of the receiver"
+                 ":param str message_body: message to send"
+                 ":param int priority: priority"
+                 ":returns: nothing"
+                 ":rtype: None"
+                 ""
+                 "This is after comment" "" ""))
+              '(("Send message to a recipient as per the priority")
+                ("This is before comment. ")
+                ("This is also before the comment but a second para")
+                (":param str sender: email address of the sender"
+                 "                   this is the second line of sender param"
+                 "                   this is the third line of sender param"
+                 ":param str recipient: email address of the receiver"
+                 ":param str message_body: message to send"
+                 ":param int priority: priority"
+                 ":returns: nothing"
+                 ":rtype: None")
+                ("This is after comment")))))
 
 
 (ert-deftest sphinx-doc-test-parse-fields ()
-  (cl-assert (sphinx-doc-parse-fields
-              '(":param str sender: email address of the sender"
-                "                   this is the second line of sender param"
-                ":param str recipient: email address of the receiver"
-                ":param str message_body: message to send"
-                ":param int priority: priority"
-                ":returns: "
-                ":rtype: None"))
-             ([cl-struct-sphinx-doc-field "param" "str" "sender" "email address of the sender\n                   this is the second line of sender param"]
-              [cl-struct-sphinx-doc-field "param" "str" "recipient" "email address of the receiver"]
-              [cl-struct-sphinx-doc-field "param" "str" "message_body" "message to send"]
-              [cl-struct-sphinx-doc-field "param" "int" "priority" "priority"]
-              [cl-struct-sphinx-doc-field "returns" nil nil nil]
-              [cl-struct-sphinx-doc-field "rtype" nil nil "None"])))
+  (cl-assert (equal
+              (sphinx-doc-parse-fields
+               '(":param str sender: email address of the sender"
+                 "                   this is the second line of sender param"
+                 ":param str recipient: email address of the receiver"
+                 ":param str message_body: message to send"
+                 ":param priority: priority of message sending which is"
+                 "                 is determined by joining date"
+                 ":returns: this is a case where the return spans more"
+                 "          than two lines. So I need to add a third line"
+                 "          here and see if tests pass"
+                 ":rtype: None"))
+              '([cl-struct-sphinx-doc-field "param" "str" "sender" "email address of the sender\n                   this is the second line of sender param"]
+                [cl-struct-sphinx-doc-field "param" "str" "recipient" "email address of the receiver"]
+                [cl-struct-sphinx-doc-field "param" "str" "message_body" "message to send"]
+                [cl-struct-sphinx-doc-field "param" nil "priority" "priority of message sending which is\n                 is determined by joining date"]
+                [cl-struct-sphinx-doc-field "returns" nil nil "this is a case where the return spans more\n          than two lines. So I need to add a third line\n          here and see if tests pass"]
+                [cl-struct-sphinx-doc-field "rtype" nil nil "None"])))
+  (cl-assert (equal
+              (sphinx-doc-parse-fields
+               '(":param str sender: email address of the sender"
+                 "                   this is the second line of sender param"
+                 "                   this is the third line of sender param"
+                 ":param int priority: priority"
+                 ":returns: "
+                 ":rtype: None"))
+              '([cl-struct-sphinx-doc-field "param" "str" "sender" "email address of the sender\n                   this is the second line of sender param\n                   this is the third line of sender param"]
+                [cl-struct-sphinx-doc-field "param" "int" "priority" "priority"]
+                [cl-struct-sphinx-doc-field "returns" nil nil ""]
+                [cl-struct-sphinx-doc-field "rtype" nil nil "None"]))))
 
 
 (ert-deftest sphinx-doc-test-merge-fields ()
