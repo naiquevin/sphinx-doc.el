@@ -154,15 +154,34 @@
 
 
 (ert-deftest sphinx-doc-test-merge-fields ()
-  (let ((fs1 '([cl-struct-sphinx-doc-field "param" "str" "name" "This is name"]
-               [cl-struct-sphinx-doc-field "returns" nil nil "constant 42"]
-               [cl-struct-sphinx-doc-field "rtype" nil nil "integer"]))
-        (fs2 '([cl-struct-sphinx-doc-field "param" nil "name" ""]
-               [cl-struct-sphinx-doc-field "param" nil "age" ""]
-               [cl-struct-sphinx-doc-field "returns" nil nil ""]
-               [cl-struct-sphinx-doc-field "rtype" nil nil ""])))
-    (cl-assert (equal (sphinx-doc-merge-fields fs1 fs2)
+  (let ((t1-old '([cl-struct-sphinx-doc-field "param" "str" "name" "This is name"]
+                  [cl-struct-sphinx-doc-field "returns" nil nil "constant 42"]
+                  [cl-struct-sphinx-doc-field "rtype" nil nil "integer"]))
+
+        (t1-new '([cl-struct-sphinx-doc-field "param" nil "name" ""]
+                  [cl-struct-sphinx-doc-field "param" nil "age" ""]
+                  [cl-struct-sphinx-doc-field "returns" nil nil ""]
+                  [cl-struct-sphinx-doc-field "rtype" nil nil ""]))
+
+        (t2-old '([cl-struct-sphinx-doc-field "param" nil "name" "name of the person"]
+                  [cl-struct-sphinx-doc-field "type" nil "name" "str"]
+                  [cl-struct-sphinx-doc-field "returns" nil nil "constant 42"]
+                  [cl-struct-sphinx-doc-field "rtype" nil nil "integer"]
+                  [cl-struct-sphinx-doc-field "raises" nil nil "KeyError"]))
+
+        (t2-new '([cl-struct-sphinx-doc-field "param" nil "name" ""]
+                  [cl-struct-sphinx-doc-field "param" nil "age" ""]
+                  [cl-struct-sphinx-doc-field "returns" nil nil ""]
+                  [cl-struct-sphinx-doc-field "rtype" nil nil ""])))
+    (cl-assert (equal (sphinx-doc-merge-fields t1-old t1-new)
                       (list (make-sphinx-doc-field :key "param" :arg "name" :type "str" :desc "This is name")
                             (make-sphinx-doc-field :key "param" :arg "age" :desc "")
                             (make-sphinx-doc-field :key "returns" :desc "constant 42")
-                            (make-sphinx-doc-field :key "rtype" :desc "integer"))))))
+                            (make-sphinx-doc-field :key "rtype" :desc "integer"))))
+    (cl-assert (equal (sphinx-doc-merge-fields t2-old t2-new)
+                      '([cl-struct-sphinx-doc-field "param" nil "name" "name of the person"]
+                        [cl-struct-sphinx-doc-field "type" nil "name" "str"]
+                        [cl-struct-sphinx-doc-field "param" nil "age" ""]
+                        [cl-struct-sphinx-doc-field "returns" nil nil "constant 42"]
+                        [cl-struct-sphinx-doc-field "rtype" nil nil "integer"]
+                        [cl-struct-sphinx-doc-field "raises" nil nil "KeyError"])))))

@@ -92,6 +92,12 @@ SEP is the separator, SEQ is the list of items."
     (butlast (cdr (aux seq)) 1)))
 
 
+(defun sphinx-doc-flatmap (f xs)
+  "Return flattened result of mapping the function over list.
+F is the function and XS is the list."
+  (cl-reduce #'append (mapcar f xs)))
+
+
 ;; regular expression to identify a valid function definition in
 ;; python and match it's name and arguments
 (defconst sphinx-doc-fun-regex "^ *def \\([a-zA-Z0-9_]+\\)(\\(\\(?:.\\|\n\\)*\\)):$")
@@ -99,6 +105,12 @@ SEP is the separator, SEQ is the list of items."
 ;; regexes for beginning and end of python function definitions
 (defconst sphinx-doc-fun-beg-regex "def")
 (defconst sphinx-doc-fun-end-regex ":\\(?:\n\\)?")
+
+;; Variations for some field keys recognized by Sphinx
+(defconst sphinx-doc-param-variants '("param" "parameter" "arg" "argument"
+                                      "key" "keyword"))
+(defconst sphinx-doc-raises-variants '("raises" "raise" "except" "exception"))
+(defconst sphinx-doc-returns-variants '("returns" "return"))
 
 
 ;; struct definitions
@@ -118,6 +130,20 @@ SEP is the separator, SEQ is the list of items."
   type       ; optional datatype
   arg        ; optional argument
   (desc "")) ; description
+
+;; Note about various types of reST fields recognized by Sphinx and
+;; how they are represented using the `sphinx-doc-field` struct
+;; above. The `key` should be non-nil in all since that's how they are
+;; identified:
+;;
+;; 1. param: All params must have a valid `arg` whereas `type` is
+;;           optional and `desc` will initially be an empty string
+;; 2. type: Must have valid `arg`
+;; 3. rtype: Must NOT have `type` or `arg`
+;; 4. returns: Must NOT have `type` or `arg`
+;; 5. raises: Must have a valid `arg`
+;;
+;; See Also: http://sphinx-doc.org/domains.html#info-field-lists
 
 
 (cl-defstruct sphinx-doc-doc
@@ -299,23 +325,47 @@ the remaining fields of the old object stay as they are."
             (sphinx-doc-doc-fields new))))
 
 
+(defun sphinx-doc-select-fields (keys fields)
+  "Return subset of fields with select keys.
+KEYS is a list of strings and FIELDS is a list of field objects."
+  (sphinx-doc-filter (lambda (f)
+                       (member (sphinx-doc-field-key f) keys))
+                     fields))
+
+
+(defun sphinx-doc-field-map (fields)
+  "Create a mapping of field arg with the field for all FIELDS."
+  (mapcar (lambda (f) (cons (sphinx-doc-field-arg f) f)) fields))
+
+
+(defun sphinx-doc-field-map-get (key mapping)
+  "Return the value in the field mapping for the key or nil.
+KEY is a string and MAPPING is an associative list."
+  (cdr (assoc key mapping)))
+
+
 (defun sphinx-doc-merge-fields (old new)
   "Merge old and new fields together.
 OLD is the list of old field objects, NEW is the list of new
 field objects."
-  (let ((field-index (mapcar (lambda (f)
-                               (if (sphinx-doc-field-arg f)
-                                   (cons (sphinx-doc-field-arg f) f)
-                                 (cons (sphinx-doc-field-key f) f)))
-                             old)))
-    (progn
-      (mapcar (lambda (f)
-                (cond ((assoc (sphinx-doc-field-arg f) field-index)
-                       (cdr (assoc (sphinx-doc-field-arg f) field-index)))
-                      ((assoc (sphinx-doc-field-key f) field-index)
-                       (cdr (assoc (sphinx-doc-field-key f) field-index)))
-                      (t f)))
-              new))))
+  (let ((param-map (sphinx-doc-field-map
+                    (sphinx-doc-select-fields sphinx-doc-param-variants old)))
+        (type-map (sphinx-doc-field-map
+                   (sphinx-doc-select-fields '("type") old)))
+        (fixed-fields (sphinx-doc-select-fields
+                       (cons "rtype" (append sphinx-doc-returns-variants
+                                             sphinx-doc-raises-variants))
+                       old)))
+    (append (sphinx-doc-flatmap
+             (lambda (f)
+               (let* ((key (sphinx-doc-field-arg f))
+                      (param (sphinx-doc-field-map-get key param-map))
+                      (type (sphinx-doc-field-map-get key type-map)))
+                 (cond ((and param type) (list param type))
+                       (param (list param))
+                       (t (list f)))))
+             (sphinx-doc-select-fields sphinx-doc-param-variants new))
+            fixed-fields)))
 
 
 ;; Note: Following few functions (those using `save-excursion`) must
