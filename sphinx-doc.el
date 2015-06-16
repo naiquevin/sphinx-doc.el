@@ -6,7 +6,7 @@
 ;; URL: https://github.com/naiquevin/sphinx-doc.el
 ;; Version: 0.3.0
 ;; Keywords: Sphinx, Python
-;; Package-Requires: ((s "1.9.0") (cl-lib "0.5"))
+;; Package-Requires: ((s "1.9.0") (cl-lib "0.5") (dash "2.10.0"))
 
 ;; This program is *not* a part of emacs and is provided under the MIT
 ;; License (MIT) <http://opensource.org/licenses/MIT>
@@ -43,59 +43,13 @@
 ;;; Code:
 
 (require 'cl-lib)
+(require 'dash)
 (require 's)
 
-
-;; Some good-to-have helper functions. Note that these have not been
-;; written for performance but rather to avoid including any more
-;; third party deps such as dash.el. These work sufficiently well for
-;; small input
 
 (defun sphinx-doc-current-line ()
   "Return current line as string."
   (buffer-substring-no-properties (point-at-bol) (point-at-eol)))
-
-
-(defun sphinx-doc-filter (f xs)
-  "Return items from list that pass the predicate.
-F is the predicate, XS is the list of items"
-  (delq nil
-        (mapcar (lambda (x) (and (funcall f x) x)) xs)))
-
-
-(defun sphinx-doc-take-while (f xs)
-  "Return items from list while predicate returns true.
-F is the predicate, XS is the list of items."
-  (if (not (funcall f (car xs)))
-      '()
-    (cons (car xs) (sphinx-doc-take-while f (cdr xs)))))
-
-
-(defun sphinx-doc-drop-while (f xs)
-  "Return items from list after predicate first returns true.
-F is the predicate, XS is the list of items."
-  (when xs
-    (if (funcall f (car xs))
-        (sphinx-doc-drop-while f (cdr xs))
-      xs)))
-
-
-(defun sphinx-doc-interpose (sep seq)
-  "Return list of items separated by the separator.
-SEP is the separator, SEQ is the list of items."
-  (cl-labels ((aux (xs)
-                 (if (equal xs nil)
-                     (cons sep nil)
-                   (cons sep
-                         (cons (car xs)
-                               (aux (cdr xs)))))))
-    (butlast (cdr (aux seq)) 1)))
-
-
-(defun sphinx-doc-flatmap (f xs)
-  "Return flattened result of mapping the function over list.
-F is the function and XS is the list."
-  (cl-reduce #'append (mapcar f xs)))
 
 
 ;; regular expression to identify a valid function definition in
@@ -181,7 +135,7 @@ ARGSTRS is the string representing function definition in Python.
 Note that the arguments self, *args and **kwargs are ignored."
   (when (not (string= argstrs ""))
     (mapcar #'sphinx-doc-str->arg
-            (sphinx-doc-filter
+            (-filter
              (lambda (str)
                (and (not (string= (substring str 0 1) "*"))
                     (not (string= str "self"))))
@@ -225,7 +179,7 @@ Returns nil if string is not a function definition."
   "Convert a doc object DS into string representation."
   (s-join
    "\n"
-   (sphinx-doc-filter
+   (-filter
     (lambda (x) (not (equal x nil)))
     (list (s-format "\"\"\"$0\n" 'elt (list (sphinx-doc-doc-summary ds)))
           (when (and (sphinx-doc-doc-before-fields ds)
@@ -253,11 +207,11 @@ INDENT is the current indentation level of the Python function."
       (make-sphinx-doc-doc
        :summary (caar paras)
        :before-fields (sphinx-doc-paras->str
-                       (sphinx-doc-take-while comment? (cdr paras)))
+                       (-take-while comment? (cdr paras)))
        :after-fields (sphinx-doc-paras->str
-                      (cdr (sphinx-doc-drop-while comment? (cdr paras))))
+                      (cdr (-drop-while comment? (cdr paras))))
        :fields (sphinx-doc-parse-fields
-                (car (sphinx-doc-filter field-para? paras)))))))
+                (car (-filter field-para? paras)))))))
 
 
 (defun sphinx-doc-paras->str (paras)
@@ -268,10 +222,10 @@ and a blank line between each para."
   (s-join
    ""
    (apply #'append
-          (sphinx-doc-interpose '("\n\n")
-                                (mapcar (lambda (p)
-                                          (sphinx-doc-interpose "\n" p))
-                                        paras)))))
+          (-interpose '("\n\n")
+                      (mapcar (lambda (p)
+                                (-interpose "\n" p))
+                              paras)))))
 
 
 (defun sphinx-doc-lines->paras (lines)
@@ -333,9 +287,9 @@ the remaining fields of the old object stay as they are."
 (defun sphinx-doc-select-fields (keys fields)
   "Return subset of fields with select keys.
 KEYS is a list of strings and FIELDS is a list of field objects."
-  (sphinx-doc-filter (lambda (f)
-                       (member (sphinx-doc-field-key f) keys))
-                     fields))
+  (-filter (lambda (f)
+             (member (sphinx-doc-field-key f) keys))
+           fields))
 
 
 (defun sphinx-doc-field-map (fields)
@@ -361,7 +315,7 @@ field objects."
                        (cons "rtype" (append sphinx-doc-returns-variants
                                              sphinx-doc-raises-variants))
                        old)))
-    (append (sphinx-doc-flatmap
+    (append (-mapcat
              (lambda (f)
                (let* ((key (sphinx-doc-field-arg f))
                       (param (sphinx-doc-field-map-get key param-map))
