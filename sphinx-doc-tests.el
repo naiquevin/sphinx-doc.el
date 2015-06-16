@@ -56,6 +56,10 @@
                                                                     :type "str"
                                                                     :arg "greeting"))
                       ":param str greeting: "))
+  (cl-assert (string= (sphinx-doc-field->str (make-sphinx-doc-field :key "param"
+                                                                    :type "pkg.module.Class"
+                                                                    :arg "greeting"))
+                      ":param pkg.module.Class greeting: "))
   (cl-assert (string= (sphinx-doc-field->str (make-sphinx-doc-field :key "rtype"))
                       ":rtype: ")))
 
@@ -118,6 +122,30 @@
                  ":returns: nothing"
                  ":rtype: None")
                 ("This is after comment")))))
+
+
+(ert-deftest sphinx-doc-test-str->field ()
+  (cl-assert (equal
+              (sphinx-doc-str->field ":param name: name of the recipient")
+              (make-sphinx-doc-field :key "param"
+                                     :arg "name"
+                                     :desc "name of the recipient")))
+  (cl-assert (equal
+              (sphinx-doc-str->field ":param str name: name of the recipient")
+              (make-sphinx-doc-field :key "param"
+                                     :type "str"
+                                     :arg "name"
+                                     :desc "name of the recipient")))
+  (cl-assert (equal
+              (sphinx-doc-str->field ":param pkg.module.Class client: the client object")
+              (make-sphinx-doc-field :key "param"
+                                     :type "pkg.module.Class"
+                                     :arg "client"
+                                     :desc "the client object")))
+  (cl-assert (equal
+              (sphinx-doc-str->field ":rtype: NoneType")
+              (make-sphinx-doc-field :key "rtype"
+                                     :desc "NoneType"))))
 
 
 (ert-deftest sphinx-doc-test-parse-fields ()

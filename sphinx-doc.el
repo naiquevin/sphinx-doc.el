@@ -290,26 +290,31 @@ and a blank line between each para."
                 :initial-value (cons (list (list (car lines))) nil))))))
 
 
+(defun sphinx-doc-str->field (s)
+  "Parse a single field into field object.
+Argument S represents a single field in the fields paragraph of
+the docstring."
+  (cond ((string-match "^:\\([a-z]+\\) \\([a-z.]+\\) \\([a-zA-Z0-9_]+\\):\s?\\(.*\\(?:\n\s*.*\\)*\\)$" s)
+         (make-sphinx-doc-field :key (match-string 1 s)
+                                :type (match-string 2 s)
+                                :arg (match-string 3 s)
+                                :desc (match-string 4 s)))
+        ((string-match "^:\\([a-z]+\\) \\([a-zA-Z0-9_]+\\):\s?\\(.*\\(?:\n\s*.*\\)*\\)$" s)
+         (make-sphinx-doc-field :key (match-string 1 s)
+                                :arg (match-string 2 s)
+                                :desc (match-string 3 s)))
+        ((string-match "^:\\([a-z]+\\):\s?\\(.*\\(?:\n\s*.*\\)*\\)$" s)
+         (make-sphinx-doc-field :key (match-string 1 s)
+                                :desc (match-string 2 s)))))
+
+
 (defun sphinx-doc-parse-fields (fields-para)
   "Parse FIELDS-PARA into list of field objects.
 FIELDS-PARA is the fields section of the docstring."
-  (mapcar
-   (lambda (s)
-     (cond ((string-match "^:\\([a-z]+\\) \\([a-z]+\\) \\([a-zA-Z0-9_]+\\):\s?\\(.*\\(?:\n\s*.*\\)*\\)$" s)
-            (make-sphinx-doc-field :key (match-string 1 s)
-                                   :type (match-string 2 s)
-                                   :arg (match-string 3 s)
-                                   :desc (match-string 4 s)))
-           ((string-match "^:\\([a-z]+\\) \\([a-zA-Z0-9_]+\\):\s?\\(.*\\(?:\n\s*.*\\)*\\)$" s)
-            (make-sphinx-doc-field :key (match-string 1 s)
-                                   :arg (match-string 2 s)
-                                   :desc (match-string 3 s)))
-           ((string-match "^:\\([a-z]+\\):\s?\\(.*\\(?:\n\s*.*\\)*\\)$" s)
-            (make-sphinx-doc-field :key (match-string 1 s)
-                                   :desc (match-string 2 s)))))
-   (mapcar (lambda (s)
-             (if (s-starts-with? ":" s) s (concat ":" s)))
-           (split-string (s-join "\n" fields-para) "\n:"))))
+  (mapcar #'sphinx-doc-str->field
+          (mapcar (lambda (s)
+                    (if (s-starts-with? ":" s) s (concat ":" s)))
+                  (split-string (s-join "\n" fields-para) "\n:"))))
 
 
 (defun sphinx-doc-merge-docs (old new)
