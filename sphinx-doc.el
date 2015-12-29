@@ -265,10 +265,11 @@ the docstring."
 (defun sphinx-doc-parse-fields (fields-para)
   "Parse FIELDS-PARA into list of field objects.
 FIELDS-PARA is the fields section of the docstring."
-  (mapcar #'sphinx-doc-str->field
-          (mapcar (lambda (s)
-                    (if (s-starts-with? ":" s) s (concat ":" s)))
-                  (split-string (s-join "\n" fields-para) "\n:"))))
+  (when fields-para
+    (mapcar #'sphinx-doc-str->field
+            (mapcar (lambda (s)
+                      (if (s-starts-with? ":" s) s (concat ":" s)))
+                    (split-string (s-join "\n" fields-para) "\n:")))))
 
 
 (defun sphinx-doc-merge-docs (old new)
