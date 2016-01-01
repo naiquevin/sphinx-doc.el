@@ -66,6 +66,7 @@
 (defconst sphinx-doc-raises-variants '("raises" "raise" "except" "exception"))
 (defconst sphinx-doc-returns-variants '("returns" "return"))
 
+(defvar sphinx-doc-python-indent)
 
 ;; struct definitions
 
