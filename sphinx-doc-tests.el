@@ -82,6 +82,8 @@
 
 
 (ert-deftest sphinx-doc-test-parse ()
+  (should (equal (sphinx-doc-parse "This is a docstring without params." 0)
+                 [cl-struct-sphinx-doc-doc "This is a docstring without params." "" "" nil]))
   (should (equal (sphinx-doc-parse "FIXME! briefly describe function\n\n    :param name: \n    :returns: constant 42\n    :rtype: integer\n\n    " 4)
                  (make-sphinx-doc-doc :summary "FIXME! briefly describe function"
                                       :before-fields ""
@@ -149,6 +151,9 @@
 
 
 (ert-deftest sphinx-doc-test-parse-fields ()
+  (should (equal
+           (sphinx-doc-parse-fields nil)
+           '()))
   (should (equal
            (sphinx-doc-parse-fields
             '(":param str sender: email address of the sender"
