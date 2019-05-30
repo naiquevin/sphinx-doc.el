@@ -68,6 +68,15 @@
 
 (defvar sphinx-doc-python-indent)
 
+(defcustom sphinx-doc-all-arguments nil
+  "Defines, which arguments are documented in the docstring.
+
+Default: nil
+
+If set to non-nil, arguments like *args and **kwargs are part of
+the docstring.  The argument \"self\" will always be omitted.")
+
+
 ;; struct definitions
 
 (cl-defstruct sphinx-doc-arg
@@ -133,15 +142,22 @@
 (defun sphinx-doc-fun-args (argstrs)
   "Extract list of arg objects from string ARGSTRS.
 ARGSTRS is the string representing function definition in Python.
-Note that the arguments self, *args and **kwargs are ignored."
+Note that the arguments self, *args and **kwargs are ignored if
+sphinx-doc-all-arguments is nil."
   (when (not (string= argstrs ""))
     (mapcar #'sphinx-doc-str->arg
-            (-filter
-             (lambda (str)
-               (and (not (string= (substring str 0 1) "*"))
-                    (not (string= str "self"))))
-             (mapcar #'s-trim
-                     (split-string argstrs ","))))))
+            (if (not sphinx-doc-all-arguments)
+                (-filter
+                 (lambda (str)
+                   (and (not (string= (substring str 0 1) "*"))
+                        (not (string= str "self"))))
+                 (mapcar #'s-trim
+                         (split-string argstrs ",")))
+              (-filter
+               (lambda (str)
+                      (not (string= str "self")))
+               (mapcar #'s-trim
+                       (split-string argstrs ",")))))))
 
 
 (defun sphinx-doc-str->fndef (s)
