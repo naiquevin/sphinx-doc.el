@@ -265,12 +265,12 @@ and a blank line between each para."
   "Parse a single field into field object.
 Argument S represents a single field in the fields paragraph of
 the docstring."
-  (cond ((string-match "^:\\([a-z]+\\) \\([a-z.]+\\) \\([a-zA-Z0-9_]+\\):\s?\\(.*\\(?:\n\s*.*\\)*\\)$" s)
+  (cond ((string-match "^:\\([a-z]+\\) \\([a-z.]+\\) \\([a-zA-Z0-9_\*]+\\):\s?\\(.*\\(?:\n\s*.*\\)*\\)$" s)
          (make-sphinx-doc-field :key (match-string 1 s)
                                 :type (match-string 2 s)
                                 :arg (match-string 3 s)
                                 :desc (match-string 4 s)))
-        ((string-match "^:\\([a-z]+\\) \\([a-zA-Z0-9_]+\\):\s?\\(.*\\(?:\n\s*.*\\)*\\)$" s)
+        ((string-match "^:\\([a-z]+\\) \\([a-zA-Z0-9_\*]+\\):\s?\\(.*\\(?:\n\s*.*\\)*\\)$" s)
          (make-sphinx-doc-field :key (match-string 1 s)
                                 :arg (match-string 2 s)
                                 :desc (match-string 3 s)))
