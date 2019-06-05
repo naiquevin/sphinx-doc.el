@@ -54,11 +54,14 @@
 
 ;; regular expression to identify a valid function definition in
 ;; python and match it's name and arguments
-(defconst sphinx-doc-fun-regex "^ *def \\([a-zA-Z0-9_]+\\)(\\(\\(?:.\\|\n\\)*\\)):$")
+(defconst sphinx-doc-fun-regex "^ *def \\([a-zA-Z0-9_]+\\)(\\(\\(?:.\\|\n\\)*\\))\\(\\| -> [a-zA-Z0-9_.]+\\):$")
+
+;; regex for type hints for arguments
+(defconst sphinx-doc-fun-arg-hint-regex ": [a-zA-Z0-9_.]+")
 
 ;; regexes for beginning and end of python function definitions
 (defconst sphinx-doc-fun-beg-regex "def")
-(defconst sphinx-doc-fun-end-regex ":\\(?:\n\\)?")
+(defconst sphinx-doc-fun-end-regex ":[^ ]\\(?:\n\\)?")
 
 ;; Variations for some field keys recognized by Sphinx
 (defconst sphinx-doc-param-variants '("param" "parameter" "arg" "argument"
@@ -167,7 +170,9 @@ Returns nil if string is not a function definition."
   (when (string-match sphinx-doc-fun-regex s)
     (make-sphinx-doc-fndef
      :name (match-string 1 s)
-     :args (sphinx-doc-fun-args (match-string 2 s)))))
+     :args (sphinx-doc-fun-args
+            (replace-regexp-in-string
+             sphinx-doc-fun-arg-hint-regex "" (match-string 2 s))))))
 
 
 (defun sphinx-doc-field->str (f)
