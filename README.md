@@ -37,6 +37,9 @@ file)
 This will enable the `sphinx-doc-mode` and bind the interactive
 function `sphinx-doc` to `C-c M-d`.
 
+To include type parameters in your docstring, set 
+`sphinx-doc-include-types` to `t`. 
+
 
 Usage
 -----
@@ -54,6 +57,11 @@ Demo
 Known Issues
 ------------
 
+* The parser is whitespace-sensitive. If there are trailing spaces at 
+  the end of the function definition line, then the parser will fail. 
+  Also, if you do not have at  before the type name in your 
+  type-hints, then the parser will fail.
+  
 * When calling the function interactively, if the cursor is not on the
   head of a function definition (ie. the keyword `def`, function name
   or the parenthesized list of the formal parameters) it either shows

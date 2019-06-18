@@ -58,7 +58,7 @@
 
 ;; regexes for beginning and end of python function definitions
 (defconst sphinx-doc-fun-beg-regex "def")
-(defconst sphinx-doc-fun-end-regex ":\\(?:\n\\)?")
+(defconst sphinx-doc-fun-end-regex ":[^ ]\\(?:\n\\)?")
 
 ;; Variations for some field keys recognized by Sphinx
 (defconst sphinx-doc-param-variants '("param" "parameter" "arg" "argument"
@@ -67,12 +67,14 @@
 (defconst sphinx-doc-returns-variants '("returns" "return"))
 
 (defvar sphinx-doc-python-indent)
+(defvar sphinx-doc-include-types)
 
 ;; struct definitions
 
 (cl-defstruct sphinx-doc-arg
   name      ; name of the arg
-  default)  ; optional default value if specified
+  default   ; optional default value if specified
+  type)     ; optional type
 
 
 (cl-defstruct sphinx-doc-fndef
@@ -110,24 +112,40 @@
 
 (defun sphinx-doc-str->arg (s)
   "Build an arg object from string S."
-  (let ((parts (mapcar #'s-trim (split-string s "="))))
-    (if (cdr parts)
-        (make-sphinx-doc-arg :name (car parts)
-                             :default (cadr parts))
-      (make-sphinx-doc-arg :name (car parts)))))
+  (let* ((split-on-equal (mapcar #'s-trim (split-string s "=")))
+         (default (-second-item split-on-equal))
+         (split-on-colon
+          (mapcar #'s-trim (split-string (-first-item split-on-equal) ":")))
+         (type (-second-item split-on-colon))
+         (name (-first-item split-on-colon)))
+    (make-sphinx-doc-arg :name name
+                         :default default
+                         :type type)))
+
+(defun sphinx-doc-arg->fields (a)
+  (let* ((arg-name (sphinx-doc-arg-name a))
+         (param-field
+          (make-sphinx-doc-field
+           :key "param"
+           :arg arg-name))
+         (type-str (or (sphinx-doc-arg-type a) ""))
+         (type-field (make-sphinx-doc-field
+                      :key "type"
+                      :arg arg-name
+                      :desc type-str)))
+    (if sphinx-doc-include-types
+        (list param-field type-field)
+      (list param-field))))
 
 
 (defun sphinx-doc-fndef->doc (f)
   "Build a doc object solely from fndef F."
   (make-sphinx-doc-doc
    :fields (append
-            (mapcar (lambda (a)
-                      (make-sphinx-doc-field
-                       :key "param"
-                       :arg (sphinx-doc-arg-name a)))
-                    (sphinx-doc-fndef-args f))
-            (list (make-sphinx-doc-field :key "returns")
-                  (make-sphinx-doc-field :key "rtype")))))
+            (-mapcat 'sphinx-doc-arg->fields
+                     (sphinx-doc-fndef-args f))
+             (list (make-sphinx-doc-field :key "returns")
+                   (make-sphinx-doc-field :key "rtype")))))
 
 
 (defun sphinx-doc-fun-args (argstrs)
