@@ -53,8 +53,15 @@
 
 
 ;; regular expression to identify a valid function definition in
-;; python and match it's name and arguments
-(defconst sphinx-doc-fun-regex "^ *def \\([a-zA-Z0-9_]+\\)(\\(\\(?:.\\|\n\\)*\\)):$")
+;; python and match it's name and arguments. 
+(let ((fname-regex "\\([a-zA-Z0-9_]+\\)")
+      (args-regex "(\\(\\(?:.\\|\n\\)*\\))")
+      (return-type-regex "\\(?: -> \\([a-zA-Z0-9\\.]*\\)\\)?"))
+  (defconst sphinx-doc-fun-regex
+    (format "^ *def %1$s%2$s%3$s:$"
+            fname-regex
+            args-regex
+            return-type-regex)))
 
 ;; regexes for beginning and end of python function definitions
 (defconst sphinx-doc-fun-beg-regex "def")
@@ -166,10 +173,12 @@ Note that the arguments self, *args and **kwargs are ignored."
   "Build a fndef object from string S.
 S is a string representation of the python function definition
 Returns nil if string is not a function definition."
-  (when (string-match sphinx-doc-fun-regex s)
+  (if (string-match sphinx-doc-fun-regex s)
     (make-sphinx-doc-fndef
      :name (match-string 1 s)
-     :args (sphinx-doc-fun-args (match-string 2 s)))))
+     :args (sphinx-doc-fun-args (match-string 2 s)))
+    (message (format "Failed to parse function definition '%s'." s))
+    nil))
 
 
 (defun sphinx-doc-field->str (f)
