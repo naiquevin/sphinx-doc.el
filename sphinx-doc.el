@@ -54,10 +54,10 @@
 
 ;; regular expression to identify a valid function definition in
 ;; python and match it's name and arguments
-(defconst sphinx-doc-fun-regex "^ *def \\([a-zA-Z0-9_]+\\)(\\(\\(?:.\\|\n\\)*\\))\\(\\| -> [a-zA-Z0-9_.]+\\):$")
+(defconst sphinx-doc-fun-regex "^ *def \\([a-zA-Z0-9_.]+\\)(\\(\\(?:.\\|\n\\)*\\))\\( -> [][a-zA-Z0-9_., ]*\\|\\):$")
 
 ;; regex for type hints for arguments
-(defconst sphinx-doc-fun-arg-hint-regex ": [a-zA-Z0-9_.]+")
+(defconst sphinx-doc-fun-arg-hint-regex ": [a-zA-Z0-9_.]+\\(\[[][a-zA-Z0-9_., ]*\]\\|\\)+")
 
 ;; regexes for beginning and end of python function definitions
 (defconst sphinx-doc-fun-beg-regex "def")
@@ -71,13 +71,21 @@
 
 (defvar sphinx-doc-python-indent)
 
+
 (defcustom sphinx-doc-all-arguments nil
-  "Defines, which arguments are documented in the docstring.
+  "Defines if all arguments are documented in the docstring.
 
 Default: nil
 
 If set to non-nil, arguments like *args and **kwargs are part of
 the docstring.  The argument \"self\" will always be omitted.")
+
+(defcustom sphinx-doc-exclude-rtype nil
+  "Defines if \"rtype\" is part of the docstring.
+
+Default: nil
+
+If set to non-nil, \"rtype\" will be excluded from the docstring.")
 
 
 ;; struct definitions
@@ -114,7 +122,7 @@ the docstring.  The argument \"self\" will always be omitted.")
 
 
 (cl-defstruct sphinx-doc-doc
-  (summary "FIXME! briefly describe function") ; summary line that fits on the first line
+  (summary "DESCRIBE FUNCTION HERE...") ; summary line that fits on the first line
   before-fields                                ; list of comments before fields
   after-fields                                 ; list of comments after fields
   fields)                                      ; list of field objects
@@ -138,8 +146,10 @@ the docstring.  The argument \"self\" will always be omitted.")
                        :key "param"
                        :arg (sphinx-doc-arg-name a)))
                     (sphinx-doc-fndef-args f))
-            (list (make-sphinx-doc-field :key "returns")
-                  (make-sphinx-doc-field :key "rtype")))))
+            (if sphinx-doc-exclude-rtype
+                (list (make-sphinx-doc-field :key "returns"))
+              (list (make-sphinx-doc-field :key "returns")
+                    (make-sphinx-doc-field :key "rtype"))))))
 
 
 (defun sphinx-doc-fun-args (argstrs)
@@ -153,12 +163,14 @@ sphinx-doc-all-arguments is nil."
                 (-filter
                  (lambda (str)
                    (and (not (string= (substring str 0 1) "*"))
+                        (not (string= str ""))
                         (not (string= str "self"))))
                  (mapcar #'s-trim
                          (split-string argstrs ",")))
               (-filter
                (lambda (str)
-                      (not (string= str "self")))
+                 (and (not (string= str ""))
+                      (not (string= str "self"))))
                (mapcar #'s-trim
                        (split-string argstrs ",")))))))
 
