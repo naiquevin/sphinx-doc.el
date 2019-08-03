@@ -57,7 +57,7 @@
 (defconst sphinx-doc-fun-regex "^ *def \\([a-zA-Z0-9_.]+\\)(\\(\\(?:.\\|\n\\)*\\))\\( -> [][a-zA-Z0-9_., ]*\\|\\):$")
 
 ;; regex for type hints for arguments
-(defconst sphinx-doc-fun-arg-hint-regex ": [a-zA-Z0-9_.]+\\(\[[][a-zA-Z0-9_., ]*\]\\|\\)+")
+(defconst sphinx-doc-fun-arg-hint-regex ": [a-zA-Z0-9_.]*\\([[][][a-zA-Z0-9_., ]*[]]\\|\\)")
 
 ;; regexes for beginning and end of python function definitions
 (defconst sphinx-doc-fun-beg-regex "def")
@@ -138,7 +138,9 @@ If set to non-nil, \"rtype\" will be excluded from the docstring.")
 
 
 (defun sphinx-doc-fndef->doc (f)
-  "Build a doc object solely from fndef F."
+  "Build a doc object solely from fndef F.
+Note that the key \"rtype\" is included if
+sphinx-doc-exclude-rtype is not nil."
   (make-sphinx-doc-doc
    :fields (append
             (mapcar (lambda (a)
