@@ -37,6 +37,10 @@ file)
 This will enable the `sphinx-doc-mode` and bind the interactive
 function `sphinx-doc` to `C-c M-d`.
 
+If `(setq sphinx-doc-all-arguments t)` is added to `.emacs`, arguments
+that start with an asterisk are shown in the docstring, e.g. `*args` or
+`**kwargs`.
+
 
 Usage
 -----

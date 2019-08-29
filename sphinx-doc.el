@@ -54,11 +54,14 @@
 
 ;; regular expression to identify a valid function definition in
 ;; python and match it's name and arguments
-(defconst sphinx-doc-fun-regex "^ *def \\([a-zA-Z0-9_]+\\)(\\(\\(?:.\\|\n\\)*\\)):$")
+(defconst sphinx-doc-fun-regex "^ *def \\([a-zA-Z0-9_.]+\\)(\\(\\(?:.\\|\n\\)*\\))\\( -> [][a-zA-Z0-9_., ]*\\|\\):$")
+
+;; regex for type hints for arguments
+(defconst sphinx-doc-fun-arg-hint-regex ": [a-zA-Z0-9_.]*\\([[][][a-zA-Z0-9_., ]*[]]\\|\\)")
 
 ;; regexes for beginning and end of python function definitions
 (defconst sphinx-doc-fun-beg-regex "def")
-(defconst sphinx-doc-fun-end-regex ":\\(?:\n\\)?")
+(defconst sphinx-doc-fun-end-regex ":[^ ]\\(?:\n\\)?")
 
 ;; Variations for some field keys recognized by Sphinx
 (defconst sphinx-doc-param-variants '("param" "parameter" "arg" "argument"
@@ -67,6 +70,23 @@
 (defconst sphinx-doc-returns-variants '("returns" "return"))
 
 (defvar sphinx-doc-python-indent)
+
+
+(defcustom sphinx-doc-all-arguments nil
+  "Defines if all arguments are documented in the docstring.
+
+Default: nil
+
+If set to non-nil, arguments like *args and **kwargs are part of
+the docstring.  The argument \"self\" will always be omitted.")
+
+(defcustom sphinx-doc-exclude-rtype nil
+  "Defines if \"rtype\" is part of the docstring.
+
+Default: nil
+
+If set to non-nil, \"rtype\" will be excluded from the docstring.")
+
 
 ;; struct definitions
 
@@ -102,7 +122,7 @@
 
 
 (cl-defstruct sphinx-doc-doc
-  (summary "FIXME! briefly describe function") ; summary line that fits on the first line
+  (summary "DESCRIBE FUNCTION HERE...") ; summary line that fits on the first line
   before-fields                                ; list of comments before fields
   after-fields                                 ; list of comments after fields
   fields)                                      ; list of field objects
@@ -118,7 +138,9 @@
 
 
 (defun sphinx-doc-fndef->doc (f)
-  "Build a doc object solely from fndef F."
+  "Build a doc object solely from fndef F.
+Note that the key \"rtype\" is included if
+sphinx-doc-exclude-rtype is not nil."
   (make-sphinx-doc-doc
    :fields (append
             (mapcar (lambda (a)
@@ -126,22 +148,33 @@
                        :key "param"
                        :arg (sphinx-doc-arg-name a)))
                     (sphinx-doc-fndef-args f))
-            (list (make-sphinx-doc-field :key "returns")
-                  (make-sphinx-doc-field :key "rtype")))))
+            (if sphinx-doc-exclude-rtype
+                (list (make-sphinx-doc-field :key "returns"))
+              (list (make-sphinx-doc-field :key "returns")
+                    (make-sphinx-doc-field :key "rtype"))))))
 
 
 (defun sphinx-doc-fun-args (argstrs)
   "Extract list of arg objects from string ARGSTRS.
 ARGSTRS is the string representing function definition in Python.
-Note that the arguments self, *args and **kwargs are ignored."
+Note that the arguments self, *args and **kwargs are ignored if
+sphinx-doc-all-arguments is nil."
   (when (not (string= argstrs ""))
     (mapcar #'sphinx-doc-str->arg
-            (-filter
-             (lambda (str)
-               (and (not (string= (substring str 0 1) "*"))
-                    (not (string= str "self"))))
-             (mapcar #'s-trim
-                     (split-string argstrs ","))))))
+            (if (not sphinx-doc-all-arguments)
+                (-filter
+                 (lambda (str)
+                   (and (not (string= (substring str 0 1) "*"))
+                        (not (string= str ""))
+                        (not (string= str "self"))))
+                 (mapcar #'s-trim
+                         (split-string argstrs ",")))
+              (-filter
+               (lambda (str)
+                 (and (not (string= str ""))
+                      (not (string= str "self"))))
+               (mapcar #'s-trim
+                       (split-string argstrs ",")))))))
 
 
 (defun sphinx-doc-str->fndef (s)
@@ -151,7 +184,9 @@ Returns nil if string is not a function definition."
   (when (string-match sphinx-doc-fun-regex s)
     (make-sphinx-doc-fndef
      :name (match-string 1 s)
-     :args (sphinx-doc-fun-args (match-string 2 s)))))
+     :args (sphinx-doc-fun-args
+            (replace-regexp-in-string
+             sphinx-doc-fun-arg-hint-regex "" (match-string 2 s))))))
 
 
 (defun sphinx-doc-field->str (f)
@@ -249,12 +284,12 @@ and a blank line between each para."
   "Parse a single field into field object.
 Argument S represents a single field in the fields paragraph of
 the docstring."
-  (cond ((string-match "^:\\([a-z]+\\) \\([a-z.]+\\) \\([a-zA-Z0-9_]+\\):\s?\\(.*\\(?:\n\s*.*\\)*\\)$" s)
+  (cond ((string-match "^:\\([a-z]+\\) \\([a-z.]+\\) \\([a-zA-Z0-9_\*]+\\):\s?\\(.*\\(?:\n\s*.*\\)*\\)$" s)
          (make-sphinx-doc-field :key (match-string 1 s)
                                 :type (match-string 2 s)
                                 :arg (match-string 3 s)
                                 :desc (match-string 4 s)))
-        ((string-match "^:\\([a-z]+\\) \\([a-zA-Z0-9_]+\\):\s?\\(.*\\(?:\n\s*.*\\)*\\)$" s)
+        ((string-match "^:\\([a-z]+\\) \\([a-zA-Z0-9_\*]+\\):\s?\\(.*\\(?:\n\s*.*\\)*\\)$" s)
          (make-sphinx-doc-field :key (match-string 1 s)
                                 :arg (match-string 2 s)
                                 :desc (match-string 3 s)))
