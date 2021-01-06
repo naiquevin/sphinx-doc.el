@@ -53,7 +53,7 @@
 
 
 ;; regular expression to identify a valid function definition in
-;; python and match it's name and arguments. 
+;; python and match it's name and arguments.
 (let ((fname-regex "\\([a-zA-Z0-9_]+\\)")
       (args-regex "(\\(\\(?:.\\|\n\\)*\\))")
       (return-type-regex "\\(?: -> \\([a-zA-Z0-9\\.]*\\)\\)?"))
@@ -111,10 +111,10 @@
 
 
 (cl-defstruct sphinx-doc-doc
-  (summary "FIXME! briefly describe function") ; summary line that fits on the first line
-  before-fields                                ; list of comments before fields
-  after-fields                                 ; list of comments after fields
-  fields)                                      ; list of field objects
+  (summary "TODO describe function") ; summary line that fits on the first line
+  before-fields                      ; list of comments before fields
+  after-fields                       ; list of comments after fields
+  fields)                            ; list of field objects
 
 
 (defun sphinx-doc-str->arg (s)
@@ -152,18 +152,21 @@
             (-mapcat 'sphinx-doc-arg->fields
                      (sphinx-doc-fndef-args f))
              (list (make-sphinx-doc-field :key "returns")
-                   (make-sphinx-doc-field :key "rtype")))))
+                   ;;(make-sphinx-doc-field :key "rtype")
+                   ))))
 
 
 (defun sphinx-doc-fun-args (argstrs)
   "Extract list of arg objects from string ARGSTRS.
 ARGSTRS is the string representing function definition in Python.
-Note that the arguments self, *args and **kwargs are ignored."
+Note that the arguments self, *args and **kwargs are ignored. Also empty strings are
+  ignored, to handle the final trailing comma."
   (when (not (string= argstrs ""))
     (mapcar #'sphinx-doc-str->arg
             (-filter
              (lambda (str)
-               (and (not (string= (substring str 0 1) "*"))
+               (and (not (string= str ""))
+                    (not (string= (substring str 0 1) "*"))
                     (not (string= str "self"))))
              (mapcar #'s-trim
                      (split-string argstrs ","))))))
@@ -218,7 +221,7 @@ Returns nil if string is not a function definition."
           ""
           (when (and (sphinx-doc-doc-after-fields ds)
                      (not (string= (sphinx-doc-doc-after-fields ds) "")))
-            (concat (sphinx-doc-doc-after-fields ds) "\n"))
+            (sphinx-doc-doc-after-fields ds))
           "\"\"\""))))
 
 
