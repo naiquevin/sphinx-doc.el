@@ -2,20 +2,24 @@
 
 set -e
 
-if [[ $(uname -s) == "Darwin" ]]; then
-    EMACS_BIN=/Applications/Emacs.app/Contents/MacOS/Emacs
-else
-    EMACS_BIN=emacs
-fi
+EMACS="${EMACS:=emacs}"
 
-function elpa_dep_dir() {
-    echo $(find ~/.emacs.d/elpa -type d -depth 1 | grep -E "/$1-\d+\.\d+" | sort -r | head -n 1)
-}
+NEEDED_PACKAGES="dash s"
 
-$EMACS_BIN -batch \
+INIT_PACKAGE_EL="(progn \
+  (require 'package) \
+  (push '(\"melpa\" . \"https://melpa.org/packages/\") package-archives) \
+  (package-initialize) \
+  (unless package-archive-contents \
+     (package-refresh-contents)) \
+  (dolist (pkg '(${NEEDED_PACKAGES})) \
+    (unless (package-installed-p pkg) \
+      (package-install pkg))))"
+
+
+${EMACS} -Q -batch \
+      --eval "$INIT_PACKAGE_EL" \
       -L . \
-      -L $(elpa_dep_dir "dash") \
-      -L $(elpa_dep_dir "s") \
       -l ert \
       -l ./sphinx-doc-tests.el \
       -f ert-run-tests-batch-and-exit
