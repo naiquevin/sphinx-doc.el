@@ -73,8 +73,10 @@
 (defconst sphinx-doc-raises-variants '("raises" "raise" "except" "exception"))
 (defconst sphinx-doc-returns-variants '("returns" "return"))
 
-(defvar sphinx-doc-python-indent)
-(defvar sphinx-doc-include-types)
+(defcustom sphinx-doc-python-indent t
+  "If non-nil, the docstring will be indented.")
+(defcustom sphinx-doc-include-types t
+  "If non-nil, the docstring will also include the type.")
 
 ;; struct definitions
 
