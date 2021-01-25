@@ -97,7 +97,16 @@
                                       :after-fields ""
                                       :fields (list (make-sphinx-doc-field :key "param" :arg "name")
                                                     (make-sphinx-doc-field :key "returns" :desc "constant 42")
-                                                    (make-sphinx-doc-field :key "rtype" :desc "integer"))))))
+                                                    (make-sphinx-doc-field :key "rtype" :desc "integer")))))
+
+  (should (equal (sphinx-doc-parse "FIXME! briefly describe function\n\n    :param name: \n    :returns: constant 42\n    :rtype: integer\n\n    " 4)
+                 (make-sphinx-doc-doc :summary "FIXME! briefly describe function"
+                                      :before-fields ""
+                                      :after-fields ""
+                                      :fields (list (make-sphinx-doc-field :key "param" :arg "name")
+                                                    (make-sphinx-doc-field :key "returns" :desc "constant 42")
+                                                    (make-sphinx-doc-field :key "rtype" :desc "integer")))))
+  )
 
 
 (ert-deftest sphinx-doc-test-lines->paras ()
@@ -226,3 +235,33 @@
                          (make-sphinx-doc-field :key "returns" :type nil :arg nil :desc "constant 42")
                          (make-sphinx-doc-field :key "rtype" :type nil :arg nil :desc "integer")
                          (make-sphinx-doc-field :key "raises" :type nil :arg nil :desc "KeyError"))))))
+
+(ert-deftest sphinx-doc-test-str->fndef ()
+  (should (equal
+           (sphinx-doc-str->fndef "def fun(a, b):")
+           (make-sphinx-doc-fndef
+            :name "fun"
+            :args (list (make-sphinx-doc-arg :name "a")
+                        (make-sphinx-doc-arg :name "b")))))
+
+  (should (equal
+           (sphinx-doc-str->fndef "def fun(a: int, b):")
+           (make-sphinx-doc-fndef
+            :name "fun"
+            :args (list (make-sphinx-doc-arg :name "a" :type "int")
+                        (make-sphinx-doc-arg :name "b")))))
+
+  (should (equal
+           (sphinx-doc-str->fndef "def fun(a, b: Optional[str]):")
+           (make-sphinx-doc-fndef
+            :name "fun"
+            :args (list (make-sphinx-doc-arg :name "a")
+                        (make-sphinx-doc-arg :name "b" :type "Optional[str]")))))
+
+  (should (equal
+           (sphinx-doc-str->fndef "def fun(a, b: Union[str, list]):")
+           (make-sphinx-doc-fndef
+            :name "fun"
+            :args (list (make-sphinx-doc-arg :name "a")
+                        (make-sphinx-doc-arg :name "b" :type "Union[str, list]")))))
+  )

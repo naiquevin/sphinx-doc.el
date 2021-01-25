@@ -157,12 +157,31 @@
                    ;;(make-sphinx-doc-field :key "rtype")
                    ))))
 
+(defun sphinx-doc-split-args (input)
+  "Like (split-string input \",\") but don't split on coma inside type hints"
+  (let ((bracket_counter 0)
+        (cursor -1)
+        (strings '()))
+    (dotimes (i (length input))
+      (let ((char (aref input i)))
+        (cond
+         ((= char ?\[)
+          (setq bracket_counter (1+ bracket_counter)))
+         ((= char ?\])
+          (setq bracket_counter (1- bracket_counter)))
+         ((and (= char ?,) (= bracket_counter 0))
+          (setq strings (append strings (list (substring input (1+ cursor) i))))
+          (setq cursor i))
+         )))
+    (setq strings (append strings (list (substring input (1+ cursor)))))
+    ))
 
 (defun sphinx-doc-fun-args (argstrs)
   "Extract list of arg objects from string ARGSTRS.
 ARGSTRS is the string representing function definition in Python.
 Note that the arguments self, *args and **kwargs are ignored. Also empty strings are
   ignored, to handle the final trailing comma."
+  (message argstrs)
   (when (not (string= argstrs ""))
     (mapcar #'sphinx-doc-str->arg
             (-filter
@@ -171,7 +190,7 @@ Note that the arguments self, *args and **kwargs are ignored. Also empty strings
                     (not (string= (substring str 0 1) "*"))
                     (not (string= str "self"))))
              (mapcar #'s-trim
-                     (split-string argstrs ","))))))
+                     (sphinx-doc-split-args argstrs))))))
 
 
 (defun sphinx-doc-str->fndef (s)
