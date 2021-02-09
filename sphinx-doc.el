@@ -75,7 +75,7 @@
 
 (defcustom sphinx-doc-python-indent t
   "If non-nil, the docstring will be indented.")
-(defcustom sphinx-doc-include-types t
+(defcustom sphinx-doc-include-types nil
   "If non-nil, the docstring will also include the type.")
 
 ;; struct definitions
