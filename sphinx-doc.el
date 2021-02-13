@@ -53,12 +53,19 @@
 
 
 ;; regular expression to identify a valid function definition in
-;; python and match it's name and arguments
-(defconst sphinx-doc-fun-regex "^ *def \\([a-zA-Z0-9_]+\\)(\\(\\(?:.\\|\n\\)*\\)):$")
+;; python and match it's name and arguments.
+(let ((fname-regex "\\([a-zA-Z0-9_]+\\)")
+      (args-regex "(\\(\\(?:.\\|\n\\)*\\))")
+      (return-type-regex "\\(?: -> \\([a-zA-Z0-9\\.]*\\)\\)?"))
+  (defconst sphinx-doc-fun-regex
+    (format "^ *def %1$s%2$s%3$s:$"
+            fname-regex
+            args-regex
+            return-type-regex)))
 
 ;; regexes for beginning and end of python function definitions
 (defconst sphinx-doc-fun-beg-regex "def")
-(defconst sphinx-doc-fun-end-regex ":\\(?:\n\\)?")
+(defconst sphinx-doc-fun-end-regex ":[^ ]\\(?:\n\\)?")
 
 ;; Variations for some field keys recognized by Sphinx
 (defconst sphinx-doc-param-variants '("param" "parameter" "arg" "argument"
@@ -66,13 +73,17 @@
 (defconst sphinx-doc-raises-variants '("raises" "raise" "except" "exception"))
 (defconst sphinx-doc-returns-variants '("returns" "return"))
 
-(defvar sphinx-doc-python-indent)
+(defcustom sphinx-doc-python-indent t
+  "If non-nil, the docstring will be indented.")
+(defcustom sphinx-doc-include-types nil
+  "If non-nil, the docstring will also include the type.")
 
 ;; struct definitions
 
 (cl-defstruct sphinx-doc-arg
   name      ; name of the arg
-  default)  ; optional default value if specified
+  default   ; optional default value if specified
+  type)     ; optional type
 
 
 (cl-defstruct sphinx-doc-fndef
@@ -102,56 +113,96 @@
 
 
 (cl-defstruct sphinx-doc-doc
-  (summary "FIXME! briefly describe function") ; summary line that fits on the first line
-  before-fields                                ; list of comments before fields
-  after-fields                                 ; list of comments after fields
-  fields)                                      ; list of field objects
+  (summary "TODO describe function") ; summary line that fits on the first line
+  before-fields                      ; list of comments before fields
+  after-fields                       ; list of comments after fields
+  fields)                            ; list of field objects
 
 
 (defun sphinx-doc-str->arg (s)
   "Build an arg object from string S."
-  (let ((parts (mapcar #'s-trim (split-string s "="))))
-    (if (cdr parts)
-        (make-sphinx-doc-arg :name (car parts)
-                             :default (cadr parts))
-      (make-sphinx-doc-arg :name (car parts)))))
+  (let* ((split-on-equal (mapcar #'s-trim (split-string s "=")))
+         (default (-second-item split-on-equal))
+         (split-on-colon
+          (mapcar #'s-trim (split-string (-first-item split-on-equal) ":")))
+         (type (-second-item split-on-colon))
+         (name (-first-item split-on-colon)))
+    (make-sphinx-doc-arg :name name
+                         :default default
+                         :type type)))
+
+(defun sphinx-doc-arg->fields (a)
+  (let* ((arg-name (sphinx-doc-arg-name a))
+         (param-field
+          (make-sphinx-doc-field
+           :key "param"
+           :arg arg-name))
+         (type-str (or (sphinx-doc-arg-type a) ""))
+         (type-field (make-sphinx-doc-field
+                      :key "type"
+                      :arg arg-name
+                      :desc type-str)))
+    (if sphinx-doc-include-types
+        (list param-field type-field)
+      (list param-field))))
 
 
 (defun sphinx-doc-fndef->doc (f)
   "Build a doc object solely from fndef F."
   (make-sphinx-doc-doc
    :fields (append
-            (mapcar (lambda (a)
-                      (make-sphinx-doc-field
-                       :key "param"
-                       :arg (sphinx-doc-arg-name a)))
-                    (sphinx-doc-fndef-args f))
-            (list (make-sphinx-doc-field :key "returns")
-                  (make-sphinx-doc-field :key "rtype")))))
+            (-mapcat 'sphinx-doc-arg->fields
+                     (sphinx-doc-fndef-args f))
+             (list (make-sphinx-doc-field :key "returns")
+                   ;;(make-sphinx-doc-field :key "rtype")
+                   ))))
 
+(defun sphinx-doc-split-args (input)
+  "Like (split-string input \",\") but don't split on coma inside type hints"
+  (let ((bracket_counter 0)
+        (cursor -1)
+        (strings '()))
+    (dotimes (i (length input))
+      (let ((char (aref input i)))
+        (cond
+         ((= char ?\[)
+          (setq bracket_counter (1+ bracket_counter)))
+         ((= char ?\])
+          (setq bracket_counter (1- bracket_counter)))
+         ((and (= char ?,) (= bracket_counter 0))
+          (setq strings (append strings (list (substring input (1+ cursor) i))))
+          (setq cursor i))
+         )))
+    (setq strings (append strings (list (substring input (1+ cursor)))))
+    ))
 
 (defun sphinx-doc-fun-args (argstrs)
   "Extract list of arg objects from string ARGSTRS.
 ARGSTRS is the string representing function definition in Python.
-Note that the arguments self, *args and **kwargs are ignored."
+Note that the arguments self, *args and **kwargs are ignored. Also empty strings are
+  ignored, to handle the final trailing comma."
+  (message argstrs)
   (when (not (string= argstrs ""))
     (mapcar #'sphinx-doc-str->arg
             (-filter
              (lambda (str)
-               (and (not (string= (substring str 0 1) "*"))
+               (and (not (string= str ""))
+                    (not (string= (substring str 0 1) "*"))
                     (not (string= str "self"))))
              (mapcar #'s-trim
-                     (split-string argstrs ","))))))
+                     (sphinx-doc-split-args argstrs))))))
 
 
 (defun sphinx-doc-str->fndef (s)
   "Build a fndef object from string S.
 S is a string representation of the python function definition
 Returns nil if string is not a function definition."
-  (when (string-match sphinx-doc-fun-regex s)
+  (if (string-match sphinx-doc-fun-regex s)
     (make-sphinx-doc-fndef
      :name (match-string 1 s)
-     :args (sphinx-doc-fun-args (match-string 2 s)))))
+     :args (sphinx-doc-fun-args (match-string 2 s)))
+    (message (format "Failed to parse function definition '%s'." s))
+    nil))
 
 
 (defun sphinx-doc-field->str (f)
@@ -191,7 +242,7 @@ Returns nil if string is not a function definition."
           ""
           (when (and (sphinx-doc-doc-after-fields ds)
                      (not (string= (sphinx-doc-doc-after-fields ds) "")))
-            (concat (sphinx-doc-doc-after-fields ds) "\n"))
+            (sphinx-doc-doc-after-fields ds))
           "\"\"\""))))
 
 
