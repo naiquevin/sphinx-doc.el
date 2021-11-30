@@ -158,8 +158,10 @@
                    ))))
 
 (defun sphinx-doc-split-args (input)
-  "Like (split-string input \",\") but don't split on coma inside type hints"
+  "Like (split-string INPUT \",\"), robust to commas within str or typehints."
   (let ((bracket_counter 0)
+        (squote_counter 0)
+        (dquote_counter 0)
         (cursor -1)
         (strings '()))
     (dotimes (i (length input))
@@ -169,12 +171,19 @@
           (setq bracket_counter (1+ bracket_counter)))
          ((= char ?\])
           (setq bracket_counter (1- bracket_counter)))
-         ((and (= char ?,) (= bracket_counter 0))
+         ((and (= char ?\') (= squote_counter 1))
+          (setq squote_counter (1- squote_counter)))
+         ((and (= char ?\') (/= dquote_counter 1))
+          (setq squote_counter (1+ squote_counter)))
+         ((and (= char ?\") (= dquote_counter 1))
+          (setq dquote_counter (1- dquote_counter)))
+         ((and (= char ?\") (/= squote_counter 1))
+          (setq dquote_counter (1+ dquote_counter)))
+         ((and (= char ?,) (= bracket_counter 0) (= squote_counter 0) (= dquote_counter 0))
           (setq strings (append strings (list (substring input (1+ cursor) i))))
           (setq cursor i))
          )))
-    (setq strings (append strings (list (substring input (1+ cursor)))))
-    ))
+    (setq strings (append strings (list (substring input (1+ cursor)))))))
 
 (defun sphinx-doc-fun-args (argstrs)
   "Extract list of arg objects from string ARGSTRS.
