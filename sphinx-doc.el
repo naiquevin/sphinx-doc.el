@@ -56,7 +56,7 @@
 ;; python and match it's name and arguments.
 (let ((fname-regex "\\([a-zA-Z0-9_]+\\)")
       (args-regex "(\\(\\(?:.\\|\n\\)*\\))")
-      (return-type-regex "\\(?: -> \\([a-zA-Z0-9\\.]*\\)\\)?"))
+      (return-type-regex "\\(?: -> \\([][a-zA-Z0-9\\.]*\\)\\)?"))
   (defconst sphinx-doc-fun-regex
     (format "^ *def %1$s%2$s%3$s:$"
             fname-regex

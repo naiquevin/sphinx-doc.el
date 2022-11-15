@@ -264,4 +264,11 @@
             :name "fun"
             :args (list (make-sphinx-doc-arg :name "a")
                         (make-sphinx-doc-arg :name "b" :type "Union[str, list]")))))
+
+  (should (equal
+           (sphinx-doc-str->fndef "def fun(a, b) -> Optional[str]:")
+           (make-sphinx-doc-fndef
+            :name "fun"
+            :args (list (make-sphinx-doc-arg :name "a")
+                        (make-sphinx-doc-arg :name "b")))))
   )
